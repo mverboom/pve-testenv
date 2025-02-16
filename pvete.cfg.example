@@ -1,0 +1,28 @@
+# Proxmox server to use
+CTSERVER=myserver
+# Start numbering from this ID
+CTIDSTART=500
+# Shared directory to create on Proxmox server
+CTSHARED=/var/tmp/shared
+# Container template to use
+CTTEMPLATE=mycustomtemplate
+
+# Container settings
+# Storage name where rootfs should be created (defaults to pve)
+#CTROOTFS=myrootstorage
+# Size of root filesystem (defaults to 1GB)
+#CTROOTSIZE=2
+# Memory (defaults to 1024)
+#CTMEM=4096
+# CPU cores (defaults to 1)
+#CTCORES=4
+#
+# Extra options for container creation
+#CTOPTIONS=( --pool test )
+# Define proxy if required
+#PROXY=myproxyserver:8080
+
+# Mapping of vlans to bridges. A default entry is sufficient
+BRIDGE[default]=vmbr1000
+BRIDGE[vmbr1002]="vlan200 vlan201 vlan203"
+BRIDGE[vmbr1003]="vlan300 vlan301 vlan303"

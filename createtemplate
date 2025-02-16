@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+. /etc/profile
+PATH=$PATH:/usr/sbin
+DIST=debian
+VER=$(lsb_release -s -r)
+SUITE=$(lsb_release -s -c)
+ARCH=$(dpkg --print-architecture)
+
+trap 'cleanup $?' INT TERM EXIT
+set -e
+
+log() {
+   while read line; do
+      echo "$(date "+%Y/%m/%d %H:%M:%S"): $line"
+   done
+}
+
+cleanup() {
+   test "$1" -ne 0 && echo "Aborting.." | log
+}
+
+type dab > /dev/null 2>&1 || { echo "dab not found" | log; exit 1; }
+type pvesm > /dev/null 2>&1 || { echo "proxmox tools not found" | log; exit 1; }
+
+test "$1" = "" && { echo "no image name provided" | log; exit 1; }
+
+imagename="$1"
+
+echo "Creating template $imagename $DIST $SUITE $VER" | log
+
+storage=$(pvesm status --content vztmpl | sed -n '2 s/ .*//p')
+test "$storage" = "" && { echo "Can't find vztmpl storage."; exit 1; }
+storagepath=$( sed -n "/^.*: ${storage}$/ { :loop; n; s/^\tpath //p; T loop }" /etc/pve/storage.cfg)"/template/cache"
+test -d "$storagepath" || { echo "Can't determine path for ${storage}."; exit 1;}
+
+TMPDIR=$(mktemp -d)
+cd "$TMPDIR"
+mkdir "$DIST" cache
+cd "$DIST"
+cat > dab.conf <<EOF
+Suite: $SUITE
+CacheDir: ../cache
+Architecture: $ARCH
+Name: $DIST-$SUITE
+Version: ${VER}-1
+Section: system
+Maintainer: $(getent passwd $(whoami) | cut -d':' -f5)
+Description: Debian ${VER}
+ Debian ${VER} $imagename
+EOF
+dest=$(dab basedir)
+dab init 2>&1 | log
+dab bootstrap --exim --minimal --exclude openssh-server 2>&1 | log
+dab install lsb-release net-tools tcpdump mtr-tiny socat wget curl telnet netcat-openbsd bash-completion 2>&1 | log
+echo ". /etc/profile.d/bash_completion.sh" >> "$dest/root/.bashrc"
+echo "set -o vi" >> "$dest/root/.bashrc"
+cat > "$dest"/lib/systemd/system/pve-testenv.service <<EOF
+[Unit]
+Description=PVE Testenv
+After=network.target auditd.service
+
+[Service]
+ExecStart=/shared/pve-testenv.sh
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
+EOF
+dab exec systemctl enable pve-testenv.service
+dab exec systemctl mask container-getty@1.service
+dab exec systemctl mask container-getty@2.service
+
+archive=$(dab finalize 2>&1 | grep "appliance archive:" | cut -d' ' -f3)
+mv "$archive" "$storagepath"/"$imagename.tar.gz"
+dab clean 2>&1 | log
+dab dist-clean 2>&1 | log
+cd ..
+rm -rf "$TMPDIR"
+echo "DAB done" | log
