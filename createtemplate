@@ -51,7 +51,7 @@ EOF
 dest=$(dab basedir)
 dab init 2>&1 | log
 dab bootstrap --exim --minimal --exclude openssh-server 2>&1 | log
-dab install lsb-release net-tools tcpdump mtr-tiny socat wget curl telnet netcat-openbsd bash-completion 2>&1 | log
+dab install lsb-release net-tools tcpdump mtr-tiny socat wget curl telnet netcat-openbsd bash-completion iperf3 2>&1 | log
 echo ". /etc/profile.d/bash_completion.sh" >> "$dest/root/.bashrc"
 echo "set -o vi" >> "$dest/root/.bashrc"
 cat > "$dest"/lib/systemd/system/pve-testenv.service <<EOF
@@ -69,6 +69,7 @@ EOF
 dab exec systemctl enable pve-testenv.service
 dab exec systemctl mask container-getty@1.service
 dab exec systemctl mask container-getty@2.service
+dab exec systemctl enable iperf3.service
 
 archive=$(dab finalize 2>&1 | grep "appliance archive:" | cut -d' ' -f3)
 mv "$archive" "$storagepath"/"$imagename.tar.gz"
