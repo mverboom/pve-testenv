@@ -42,7 +42,7 @@ findbridge() {
    for brname in "${!BRIDGE[@]}";do
       [[ " ${BRIDGE[$brname]} " =~ " ${net} " ]] && bridge="$brname"
    done
-   echo $bridge
+   echo "$bridge"
 }
 
 deploy() {
@@ -59,16 +59,16 @@ deploy() {
 
    echo -n "Converting network drawing..."
    declare -A hosts nets ips links routes hostsignore
-   while read line; do
-      id=$(echo $line | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
+   while read -r line; do
+      id=$(echo "$line" | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
       test "${id}" = "1" && continue
-      value=$(echo $line | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g' | sed 's/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
-      shape=$(echo $line | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
-      srcid=$(echo $line | sed -n 's/.*source="\([^"]\+\)".*/\1/p')
-      tgtid=$(echo $line | sed -n 's/.*target="\([^"]\+\)".*/\1/p')
-      parent=$(echo $line | sed -n 's/.*parent="\([^"]\+\)".*/\1/p')
-      ignore=$(echo $line | sed -n 's/.*\(dashed=1\).*/\1/p')
-      label=$(echo $line | sed -n 's/.*\(edgeLabel\).*/\1/p')
+      value=$(echo "$line" | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g' | sed 's/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
+      shape=$(echo "$line" | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
+      srcid=$(echo "$line" | sed -n 's/.*source="\([^"]\+\)".*/\1/p')
+      tgtid=$(echo "$line" | sed -n 's/.*target="\([^"]\+\)".*/\1/p')
+      parent=$(echo "$line" | sed -n 's/.*parent="\([^"]\+\)".*/\1/p')
+      ignore=$(echo "$line" | sed -n 's/.*\(dashed=1\).*/\1/p')
+      label=$(echo "$line" | sed -n 's/.*\(edgeLabel\).*/\1/p')
       if test "$label" != ""; then
          ips[$parent]="${value}"
       elif test "$value" != ""; then
@@ -90,7 +90,7 @@ deploy() {
    declare -A gws
    for netid in "${!nets[@]}"; do
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep @${netid}@)" != ""; then
+         if test "$( echo "${links[$linkid]}" | grep "@${netid}@")" != ""; then
             test "${ips[$linkid]/ gw/}" = "${ips[$linkid]}" && continue
             gws[${nets[$netid]}]="${ips[$linkid]/\/*/}"
          fi
@@ -125,40 +125,40 @@ deploy() {
    
    for hostid in "${!hosts[@]}"; do
       unset ctcreate
-      ctcreate=( pct create ${CTID} "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname ${hosts[$hostid]} )
+      ctcreate=( pct create "${CTID}" "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname ${hosts[$hostid]} )
       test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"$CTID ${hosts[$hostid]}\" >> \"${CTSHARED}/deployed\""
-      routes=0
+      routing=0
       ifs=0
-      # Find routes
+      # Find routing tables
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep @${hostid}@)" != ""; then
+         if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
             for connid in ${links[$linkid]//@/ }; do
                if test "${routes[$connid]}" != ""; then
                   test "$DRY" -eq 0 && ssh "$CTSERVER" "echo -e \"${routes[$connid]//@/\\n}\" > \"${CTSHARED}/routes-${hosts[$hostid]}\""
-                  routes=1
+                  routing=1
                fi
             done
 	 fi
       done
       # Find network interfaces
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep @${hostid}@)" != ""; then
+         if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
             for connid in ${links[$linkid]//@/ }; do
                net="${nets[$connid]}"
                if test "$net" != ""; then
                   ifcfg="name=${net},bridge=$(findbridge "$net")"
                   test "${ips[$linkid]}" != "" && ifcfg="${ifcfg},ip=${ips[$linkid]/ gw/}"
                   test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"${ips[$linkid]/\/*/} ${hosts[$hostid]}-${net}\" >> \"${CTSHARED}/hosts\""
-                  test "$routes" -eq 0 -a "${gws[$net]}" != "" && ifcfg="${ifcfg},gw=${gws[$net]}"
+                  test "$routing" -eq 0 -a "${gws[$net]}" != "" && ifcfg="${ifcfg},gw=${gws[$net]}"
                   test "${net/vlan/}" != "${net}" && ifcfg="${ifcfg},tag=${net/vlan/}"
-                  ctcreate+=( --net${ifs} $ifcfg )
+                  ctcreate+=( "--net${ifs}" "$ifcfg" )
                   ifs=$(( ifs + 1 ))
                fi
             done
          fi
       done
-      ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED",mp=/shared ${CTOPTIONS[@]} )
-      test "${hostsignore[$hostid]}" = "" && ctcmds[$CTID]="${ctcreate[@]}"
+      ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
+      test "${hostsignore[$hostid]}" = "" && ctcmds[$CTID]="${ctcreate[*]}"
       CTID=$(( CTID + 1 ))
    done
    echo "done"
@@ -167,7 +167,7 @@ deploy() {
       echo -n "Deploying container $ctid..."
       test "$DRY" -eq 0 && { ssh "$CTSERVER" "${ctcmds[$ctid]}" > /dev/null 2>&1 || { echo "error"; exit 1; } }
       test "$DRY" -eq 1 && echo "${ctcmds[$ctid]}"
-      echo done
+      echo "done"
    done
 }
 
@@ -184,7 +184,7 @@ done
 shift $((OPTIND-1))
 
 cfgloc=$(realpath "$0")
-cfgloc=$(dirname "$cfglog")
+cfgloc=$(dirname "$cfgloc")
 cfgfound=0
 for cfgdir in "$cfgloc/" "$HOME/."; do
    test -e "${cfgdir}${CFGNAME}" && { . "${cfgdir}${CFGNAME}"; cfgfound=1; break ; }
