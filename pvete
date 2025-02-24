@@ -6,6 +6,7 @@ usage() {
    echo "$0 <option> <command>"
    echo
    echo "  -c <cfgfile>       Use specific config file"
+   echo "  -d                 Dryrun, don't execute"
    echo "  deploy <drawing>   Deploy containers accoring to drawio drawing"
    echo "  list               Show deployed containers"
    echo "  enter <name>       Start shell on container"
@@ -50,51 +51,53 @@ deploy() {
    tmplpath="$(ssh "${CTSERVER}" "sed -n \"/^.*: ${tmplstorage}\$/ { :loop; n; s/^\tpath //p; T loop }\" /etc/pve/storage.cfg")"
    test "$tmplpath" = "" && { echo "Unable to find path for $tmplstorage"; exit 1; }
    test "$(ssh "${CTSERVER}" "ls ${tmplpath}/template/cache/${CTTEMPLATE}.tar.gz 2> /dev/null")" = "" && { echo "Template $CTTEMPLATE not found."; exit 1; }
-   
+
    ssh "${CTSERVER}" "mkdir -p \"$CTSHARED\"" || { echo "Unable to create $CTSHARED on $CTSERVER"; exit 1; }
-   
+
    drawio="$1"
    ! test -e "$drawio" && { echo "Unable to load drawing."; exit 1; }
-   
+
    echo -n "Converting network drawing..."
-   declare -A hosts nets ips links routes
+   declare -A hosts nets ips links routes hostsignore
    while read line; do
       id=$(echo $line | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
-      test "${#id}" -lt 2 && continue
-      value=$(echo $line | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/_/g' | sed 's/__/_/g; s/_$//')
+      test "${id}" = "1" && continue
+      value=$(echo $line | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g' | sed 's/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
       shape=$(echo $line | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
       srcid=$(echo $line | sed -n 's/.*source="\([^"]\+\)".*/\1/p')
       tgtid=$(echo $line | sed -n 's/.*target="\([^"]\+\)".*/\1/p')
       parent=$(echo $line | sed -n 's/.*parent="\([^"]\+\)".*/\1/p')
       ignore=$(echo $line | sed -n 's/.*\(dashed=1\).*/\1/p')
-      if test "$value" != ""; then
+      label=$(echo $line | sed -n 's/.*\(edgeLabel\).*/\1/p')
+      if test "$label" != ""; then
+         ips[$parent]="${value}"
+      elif test "$value" != ""; then
          if test "$shape" = "cloud"; then # Cloud shape is a vlan
             nets[$id]="$value"
          elif test "$shape" = "document"; then # Document is routing table
             routes[$id]="$value"
-         elif test "${#parent}" -lt 2; then
-            test -z "$ignore" && hosts[$id]="$value"
-         else # it is text coupled to a line, so an ip address
-            ips[$parent]="${value}"
+         elif test "${parent}" = "1"; then # this is a host
+            hosts[$id]="$value"
+            test -n "$ignore" && hostsignore[$id]="$value"
          fi
       else
          # This is a link between objects
-         links[$id]="_${srcid}_${tgtid}_"
+         links[$id]="@${srcid}@${tgtid}@"
       fi
-   done < <( grep mxCell "$drawio" )
-   
+   done < <( grep '<mxCell' "$drawio" )
+
    # Search for default gateways per vlan
    declare -A gws
    for netid in "${!nets[@]}"; do
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep _${netid}_)" != ""; then
+         if test "$( echo "${links[$linkid]}" | grep @${netid}@)" != ""; then
             test "${ips[$linkid]/ gw/}" = "${ips[$linkid]}" && continue
             gws[${nets[$netid]}]="${ips[$linkid]/\/*/}"
          fi
       done
    done
    echo "done"
-   
+
    echo -n "Generating configuration..."
    if test "$PROXY" != ""; then
       ssh "${CTSERVER}" "cat - > /lib/systemd/system/pve-testenvproxy.service" <<-EOF
@@ -126,17 +129,21 @@ deploy() {
       ssh "$CTSERVER" "echo \"$CTID ${hosts[$hostid]}\" >> \"${CTSHARED}/deployed\""
       routes=0
       ifs=0
+      # Find routes
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep _${hostid}_)" != ""; then
-            # Find routes
-            for connid in ${links[$linkid]//_/ }; do
+         if test "$( echo "${links[$linkid]}" | grep @${hostid}@)" != ""; then
+            for connid in ${links[$linkid]//@/ }; do
                if test "${routes[$connid]}" != ""; then
-                  ssh "$CTSERVER" "echo -e \"${routes[$connid]//_/\\n}\" > \"${CTSHARED}/routes-${hosts[$hostid]}\""
+                  ssh "$CTSERVER" "echo -e \"${routes[$connid]//@/\\n}\" > \"${CTSHARED}/routes-${hosts[$hostid]}\""
                   routes=1
                fi
             done
-            # Find network interfaces
-            for connid in ${links[$linkid]//_/ }; do
+	 fi
+      done
+      # Find network interfaces
+      for linkid in "${!links[@]}"; do
+         if test "$( echo "${links[$linkid]}" | grep @${hostid}@)" != ""; then
+            for connid in ${links[$linkid]//@/ }; do
                net="${nets[$connid]}"
                if test "$net" != ""; then
                   ifcfg="name=${net},bridge=$(findbridge "$net")"
@@ -151,22 +158,25 @@ deploy() {
          fi
       done
       ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED",mp=/shared ${CTOPTIONS[@]} )
-      ctcmds[$CTID]="${ctcreate[@]}"
+      test "${hostsignore[$hostid]}" = "" && ctcmds[$CTID]="${ctcreate[@]}"
       CTID=$(( CTID + 1 ))
    done
    echo "done"
-   
+
    for ctid in "${!ctcmds[@]}"; do
       echo -n "Deploying container $ctid..."
-      ssh "$CTSERVER" "${ctcmds[$ctid]}" > /dev/null 2>&1 || { echo "error"; exit 1; }
+      test "$DRY" -eq 0 && ssh "$CTSERVER" "${ctcmds[$ctid]}" > /dev/null 2>&1 || { echo "error"; exit 1; }
+      test "$DRY" -eq 1 && echo "${ctcmds[$ctid]}"
       echo done
    done
 }
 
 CFGNAME=pvete.cfg
-while getopts :c: opt; do
+DRY=0
+while getopts :dc: opt; do
    case $opt in
    c) CFGNAME="$OPTARG" ;;
+   d) DRY=1 ;;
    \?) echo "Unknown option: -$OPTARG"; usage ;;
    :) echo "Option -$OPTARG requires argument"; usage ;;
    esac
