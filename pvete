@@ -52,7 +52,7 @@ deploy() {
    test "$tmplpath" = "" && { echo "Unable to find path for $tmplstorage"; exit 1; }
    test "$(ssh "${CTSERVER}" "ls ${tmplpath}/template/cache/${CTTEMPLATE}.tar.gz 2> /dev/null")" = "" && { echo "Template $CTTEMPLATE not found."; exit 1; }
 
-   ssh "${CTSERVER}" "mkdir -p \"$CTSHARED\"" || { echo "Unable to create $CTSHARED on $CTSERVER"; exit 1; }
+   test "$DRY" -eq 0 && { ssh "${CTSERVER}" "mkdir -p \"$CTSHARED\"" || { echo "Unable to create $CTSHARED on $CTSERVER"; exit 1; } }
 
    drawio="$1"
    ! test -e "$drawio" && { echo "Unable to load drawing."; exit 1; }
@@ -73,11 +73,11 @@ deploy() {
          ips[$parent]="${value}"
       elif test "$value" != ""; then
          if test "$shape" = "cloud"; then # Cloud shape is a vlan
-            nets[$id]="$value"
+            nets[$id]="${value/@*/}"
          elif test "$shape" = "document"; then # Document is routing table
             routes[$id]="$value"
          elif test "${parent}" = "1"; then # this is a host
-            hosts[$id]="$value"
+            hosts[$id]="${value/@*/}"
             test -n "$ignore" && hostsignore[$id]="$value"
          fi
       else
@@ -99,7 +99,7 @@ deploy() {
    echo "done"
 
    echo -n "Generating configuration..."
-   if test "$PROXY" != ""; then
+   if test "$DRY" -eq 0 -a "$PROXY" != ""; then
       ssh "${CTSERVER}" "cat - > /lib/systemd/system/pve-testenvproxy.service" <<-EOF
 	[Unit]
 	Description=PVE Testenv proxy
@@ -115,9 +115,9 @@ deploy() {
       #cat pve-testenvproxy.service | sed "s#SHARED#$CTSHARED/proxy#; s#PROXY#$PROXY#" | ssh "${CTSERVER}" "cat - > /lib/systemd/system/pve-testenvproxy.service"
       ssh "$CTSERVER" "systemctl enable pve-testenvproxy.service > /dev/null; systemctl start pve-testenvproxy.service"
    fi
-   ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
-   scp -q "pve-testenv.sh" "$CTSERVER:/${CTSHARED}/"
-   ssh "$CTSERVER" "chown 100000:100000 \"${CTSHARED}/pve-testenv.sh\"; chmod 700 \"${CTSHARED}/pve-testenv.sh\"; rm -f \"${CTSHARED}/deployed\""
+   test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
+   test "$DRY" -eq 0 && scp -q "pve-testenv.sh" "$CTSERVER:/${CTSHARED}/"
+   test "$DRY" -eq 0 && { ssh "$CTSERVER" "chown 100000:100000 \"${CTSHARED}/pve-testenv.sh\"; chmod 700 \"${CTSHARED}/pve-testenv.sh\"; rm -f \"${CTSHARED}/deployed\""; }
    
    declare -A ctcmds
    
@@ -126,7 +126,7 @@ deploy() {
    for hostid in "${!hosts[@]}"; do
       unset ctcreate
       ctcreate=( pct create ${CTID} "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname ${hosts[$hostid]} )
-      ssh "$CTSERVER" "echo \"$CTID ${hosts[$hostid]}\" >> \"${CTSHARED}/deployed\""
+      test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"$CTID ${hosts[$hostid]}\" >> \"${CTSHARED}/deployed\""
       routes=0
       ifs=0
       # Find routes
@@ -134,7 +134,7 @@ deploy() {
          if test "$( echo "${links[$linkid]}" | grep @${hostid}@)" != ""; then
             for connid in ${links[$linkid]//@/ }; do
                if test "${routes[$connid]}" != ""; then
-                  ssh "$CTSERVER" "echo -e \"${routes[$connid]//@/\\n}\" > \"${CTSHARED}/routes-${hosts[$hostid]}\""
+                  test "$DRY" -eq 0 && ssh "$CTSERVER" "echo -e \"${routes[$connid]//@/\\n}\" > \"${CTSHARED}/routes-${hosts[$hostid]}\""
                   routes=1
                fi
             done
@@ -148,7 +148,7 @@ deploy() {
                if test "$net" != ""; then
                   ifcfg="name=${net},bridge=$(findbridge "$net")"
                   test "${ips[$linkid]}" != "" && ifcfg="${ifcfg},ip=${ips[$linkid]/ gw/}"
-                  ssh "$CTSERVER" "echo \"${ips[$linkid]/\/*/} ${hosts[$hostid]}-${net}\" >> \"${CTSHARED}/hosts\""
+                  test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"${ips[$linkid]/\/*/} ${hosts[$hostid]}-${net}\" >> \"${CTSHARED}/hosts\""
                   test "$routes" -eq 0 -a "${gws[$net]}" != "" && ifcfg="${ifcfg},gw=${gws[$net]}"
                   test "${net/vlan/}" != "${net}" && ifcfg="${ifcfg},tag=${net/vlan/}"
                   ctcreate+=( --net${ifs} $ifcfg )
@@ -165,7 +165,7 @@ deploy() {
 
    for ctid in "${!ctcmds[@]}"; do
       echo -n "Deploying container $ctid..."
-      test "$DRY" -eq 0 && ssh "$CTSERVER" "${ctcmds[$ctid]}" > /dev/null 2>&1 || { echo "error"; exit 1; }
+      test "$DRY" -eq 0 && { ssh "$CTSERVER" "${ctcmds[$ctid]}" > /dev/null 2>&1 || { echo "error"; exit 1; } }
       test "$DRY" -eq 1 && echo "${ctcmds[$ctid]}"
       echo done
    done
