@@ -6,6 +6,8 @@ containers.
 These scripts are pretty bad, have loads of assumptions and the parsing of the drawio
 diagrams often leads to errors. But it works for me :)
 
+![terminal demonstration of pvete](pvete.svg)
+
 ## Features
 
 The idea is to convert a network drawing made in drawio to a working set of lxc
@@ -88,9 +90,13 @@ as the vlan tag for the bridge. So the bridge should be vlan aware.
 When integration the test environment with additional existing hosts, it can be useful to assign vlans to
 specific bridges (existing hosts can then use vlan tagging).
 There should always be a default bridge defined, so something like:
-```BRIDGE[default]="vmbr1000"```
+```
+BRIDGE[default]="vmbr1000"
+```
 If specific vlans should not be assigned to the default bridge, additional configuration lines can be added,
 mapping the vlans to a different bridge
-```BRIDGE[vmbr1001]="vlan200 vlan201 vlan202"```
+```
+BRIDGE[vmbr1001]="vlan200 vlan201 vlan202"
+```
 
 
