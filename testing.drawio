@@ -1,13 +1,13 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.9 Chrome/128.0.6613.186 Electron/32.2.5 Safari/537.36" version="26.0.9">
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.15 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.15">
   <diagram name="Page-1" id="Lpl-98hUYqEditn9nApH">
-    <mxGraphModel dx="1832" dy="1036" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1891" dy="829" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="vkmw4OF2QoEgRsS0eEnr-1" value="router1" style="rounded=0;whiteSpace=wrap;html=1;fillStyle=solid;fillColor=none;" parent="1" vertex="1">
           <mxGeometry x="190" y="390" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="vkmw4OF2QoEgRsS0eEnr-2" value="vlan100" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+        <mxCell id="vkmw4OF2QoEgRsS0eEnr-2" value="vlan100&lt;div&gt;internet&lt;/div&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="190" y="220" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="vkmw4OF2QoEgRsS0eEnr-3" value="node2" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
@@ -49,7 +49,7 @@
         <mxCell id="vkmw4OF2QoEgRsS0eEnr-9" value="node3" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="490" y="250" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="vkmw4OF2QoEgRsS0eEnr-11" value="vlan101" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+        <mxCell id="vkmw4OF2QoEgRsS0eEnr-11" value="vlan101&lt;div&gt;main network&lt;/div&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="180" y="520" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="vkmw4OF2QoEgRsS0eEnr-12" value="" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.4;exitY=0.1;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" source="vkmw4OF2QoEgRsS0eEnr-11" target="vkmw4OF2QoEgRsS0eEnr-1" edge="1">
@@ -85,7 +85,7 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="vkmw4OF2QoEgRsS0eEnr-19" value="vlan102" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+        <mxCell id="vkmw4OF2QoEgRsS0eEnr-19" value="vlan102&lt;div&gt;workstation&lt;/div&gt;&lt;div&gt;network&lt;/div&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="100" y="830" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="vkmw4OF2QoEgRsS0eEnr-20" value="10.10.2.0/24 via 10.10.1.2&lt;div&gt;default via 10.10.1.2&lt;/div&gt;" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;" parent="1" vertex="1">
@@ -108,13 +108,13 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="-nCNSBEcWgxZoxMyijet-4" value="client1" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+        <mxCell id="-nCNSBEcWgxZoxMyijet-4" value="client1&lt;div&gt;(workstation)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="240" y="690" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="-nCNSBEcWgxZoxMyijet-5" value="client2" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+        <mxCell id="-nCNSBEcWgxZoxMyijet-5" value="client2&lt;div&gt;(laptop)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="370" y="840" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="-nCNSBEcWgxZoxMyijet-7" value="excluded" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;" parent="1" vertex="1">
+        <mxCell id="-nCNSBEcWgxZoxMyijet-7" value="firewall&lt;div&gt;(qemu system)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;" parent="1" vertex="1">
           <mxGeometry x="-60" y="520" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="-nCNSBEcWgxZoxMyijet-8" value="" style="endArrow=none;html=1;rounded=0;exitX=0.16;exitY=0.55;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.017;entryY=0.633;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="vkmw4OF2QoEgRsS0eEnr-11" target="-nCNSBEcWgxZoxMyijet-7" edge="1">
