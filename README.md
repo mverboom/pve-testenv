@@ -24,3 +24,27 @@ containers. It currently has the following features:
 * Container template generation based on DAB
   * Includes socat, iperf3, mtr, tcpdump and other useful test utilities
   * Embeds service that is started on boot
+
+## Example network drawing
+
+The network drawing needs to conform to a number of conventions in order to make a chance to be converted.
+
+* Networks should be drawn using the cloud icon
+  * They content should alway have the name "vlanxxxx" where xxxx is the vlan number
+  * Any lines below the vlanxxxx can be comments and will be ignored
+* Hosts should be drawn using the rectangle icon
+  * The content should always have to name of the host on the first line
+  * Any lines below the name can be comments and will be ignored
+  * A host drawn with a dashed line will not be created as a container
+* Network connections should be drawn as lines connecting a host to a network
+* IP addresses must be text linked to the line connecting a host to a network
+  * IP addresses should always be in CIDR notation
+  * The IP address can be appended by the letter gw (space separated) when the system is the default gateway for that network
+* Routing tables should be drawn using the document icon
+  * Routing tables should be connected with a line to a host
+  * Routing tables should contain "ip r a" compatable syntax, without the "ip r a"
+  * Each routing entry has to be on a separate line
+
+A network drawing can look like this:
+
+![Network drawing](testing.drawio.png "Network drawing")
