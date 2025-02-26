@@ -48,3 +48,49 @@ The network drawing needs to conform to a number of conventions in order to make
 A network drawing can look like this:
 
 ![Network drawing](testing.drawio.png "Network drawing")
+
+## Configuration
+
+In order for the drawing to be converted, the script needs a configuration file. The default name for
+this configuration file is pvete.cfg and will be searched for in:
+* Directory where the pvete script is located
+* The homedirectory of the user, name of the configuration file will be prepended with a . (.pvete.cfg)
+
+Additionally it is possible to change the name of the file and add the -c parameter to specify the name.
+
+It is possible to have multiple configuration files in order to deploy multiple environments.
+
+The example configuration file should be fairly obvious. A few options need further explanation.
+
+CTSERVER
+
+This is the Proxmox server that should be used to deploy the containers on. Make sure this system is
+reachable by ssh and when doing so the login will be as root from the user running the script. Any
+specific requirements to do this should be added to a ```~/.ssh/config``` file.
+
+CTTEMPLATE
+
+This is the name of the template to use when creating a container. A script to create a template using DAB
+is included (createtemplate). It has to be run on the Proxmox server. It requires 1 parameter which should
+be the name of the template to create. This script takes care of some requirements that are needed in the
+containers to make the environment run smoothly.
+
+PROXY
+
+If set, the containers will be deployed to use the specified proxy for apt. The proxy should be reachable
+from the configurated Proxmox server. The containers will not access the proxy directly, all connectivity
+will run via the Proxmox server.
+
+BRIDGE
+
+Every network interface for a container will be assigned to a bridge. The vlan in the drawing will be used
+as the vlan tag for the bridge. So the bridge should be vlan aware.
+When integration the test environment with additional existing hosts, it can be useful to assign vlans to
+specific bridges (existing hosts can then use vlan tagging).
+There should always be a default bridge defined, so something like:
+```BRIDGE[default]="vmbr1000"```
+If specific vlans should not be assigned to the default bridge, additional configuration lines can be added,
+mapping the vlans to a different bridge
+```BRIDGE[vmbr1001]="vlan200 vlan201 vlan202"```
+
+
