@@ -46,6 +46,9 @@ findbridge() {
 }
 
 deploy() {
+   scriptloc=$(dirname $(realpath "$0"))
+   test -e "$scriptloc/pve-testenv.sh" || { echo "Unable to find pve-testenv.sh"; exit 1; }
+
    tmplstorage="$(ssh "${CTSERVER}" "pvesm status --content vztmpl | sed -n '2 s/ .*//p'")"
    test "$tmplstorage" = "" && { echo "Unable to find template storage"; exit 1; }
    tmplpath="$(ssh "${CTSERVER}" "sed -n \"/^.*: ${tmplstorage}\$/ { :loop; n; s/^\tpath //p; T loop }\" /etc/pve/storage.cfg")"
@@ -116,7 +119,7 @@ deploy() {
       ssh "$CTSERVER" "systemctl enable pve-testenvproxy.service > /dev/null; systemctl start pve-testenvproxy.service"
    fi
    test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
-   test "$DRY" -eq 0 && scp -q "pve-testenv.sh" "$CTSERVER:/${CTSHARED}/"
+   test "$DRY" -eq 0 && scp -q "$scriptloc/pve-testenv.sh" "$CTSERVER:/${CTSHARED}/"
    test "$DRY" -eq 0 && { ssh "$CTSERVER" "chown 100000:100000 \"${CTSHARED}/pve-testenv.sh\"; chmod 700 \"${CTSHARED}/pve-testenv.sh\"; rm -f \"${CTSHARED}/deployed\""; }
    
    declare -A ctcmds
@@ -126,6 +129,7 @@ deploy() {
    for hostid in "${!hosts[@]}"; do
       unset ctcreate
       ctcreate=( pct create "${CTID}" "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname ${hosts[$hostid]} )
+      cthostnames[$CTID]="${hosts[$hostid]}"
       test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"$CTID ${hosts[$hostid]}\" >> \"${CTSHARED}/deployed\""
       routing=0
       ifs=0
@@ -158,13 +162,12 @@ deploy() {
          fi
       done
       ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
-      test "${hostsignore[$hostid]}" = "" && ctcmds[$CTID]="${ctcreate[*]}"
-      CTID=$(( CTID + 1 ))
+      test "${hostsignore[$hostid]}" = "" && { ctcmds[$CTID]="${ctcreate[*]}"; CTID=$(( CTID + 1 )); }
    done
    echo "done"
 
    for ctid in "${!ctcmds[@]}"; do
-      echo -n "Deploying container $ctid..."
+      echo -n "Deploying container $ctid for host ${cthostnames[$ctid]}..."
       test "$DRY" -eq 0 && { ssh "$CTSERVER" "${ctcmds[$ctid]}" > /dev/null 2>&1 || { echo "error"; exit 1; } }
       test "$DRY" -eq 1 && echo "${ctcmds[$ctid]}"
       echo "done"
