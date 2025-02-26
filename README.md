@@ -70,6 +70,12 @@ This is the Proxmox server that should be used to deploy the containers on. Make
 reachable by ssh and when doing so the login will be as root from the user running the script. Any
 specific requirements to do this should be added to a ```~/.ssh/config``` file.
 
+CTSHARED
+
+This is a directory location on the Proxmox server that the script may create. This directory will be used
+to store configuration information and scripts for all containers. It is shared between the containers
+using a mountpoint.
+
 CTTEMPLATE
 
 This is the name of the template to use when creating a container. A script to create a template using DAB
@@ -99,4 +105,31 @@ mapping the vlans to a different bridge
 BRIDGE[vmbr1001]="vlan200 vlan201 vlan202"
 ```
 
+## Deploying
 
+Once a drawing is available and the configuration file has been made, deploying is quite easy (if it works).
+
+```
+pvete deploy testing.drawio
+```
+
+The script tries to read the drawing, generates all commands to run and runs the commands. After it is
+finished, the containers should exist on the Proxmox server and should be running.
+
+## Using the environment
+
+The script provides a number of options to more easily manage the containers. But it is not mandatory to use
+the script, the normal Proxmox commands can also be used.
+
+The script tries to make it easier to quickly run commands in all containers, stop or start them all and
+access a container based on the name of the container instead of the Proxmox container id.
+
+## Cleaning up
+
+Removing the containers can be done manually (but this will leave the shared directory and possibly the
+proxy systemd unit file if a proxy is configured). The pvete script provides in a cleanup action which
+will remove all containers, the shared directory and the systemd unit file.
+
+```
+pvete destroyall
+```
