@@ -51,9 +51,18 @@ EOF
 dest=$(dab basedir)
 dab init 2>&1 | log
 dab bootstrap --exim --minimal --exclude openssh-server 2>&1 | log
-dab install lsb-release net-tools tcpdump mtr-tiny socat wget curl telnet netcat-openbsd bash-completion iperf3 2>&1 | log
+dab install lsb-release net-tools tcpdump mtr-tiny socat wget curl telnet netcat-openbsd bash-completion \
+	nmap masscan hping3 iperf3 2>&1 | log
+# Setup ssh connecitivy
+echo "PermitRootLogin yes" >> "$dest/etc/ssh/sshd_config"
+echo "StrictHostKeyChecking no" >> "$dest/etc/ssh/ssh_config"
+echo "UserKnownHostsFile /dev/null" >> "$dest/etc/ssh/ssh_config"
+dab exec ssh-keygen -q -t ed25519 -N '' <<< $'\ny' >/dev/null 2>&1
+cp "$dest/root/.ssh/id_ed25519.pub" "$dest/root/.ssh/authorized_keys"
+# Enable bash completion and vi keys
 echo ". /etc/profile.d/bash_completion.sh" >> "$dest/root/.bashrc"
 echo "set -o vi" >> "$dest/root/.bashrc"
+# Setup pve-testenv service
 cat > "$dest"/lib/systemd/system/pve-testenv.service <<EOF
 [Unit]
 Description=PVE Testenv
@@ -67,8 +76,10 @@ Type=simple
 WantedBy=multi-user.target
 EOF
 dab exec systemctl enable pve-testenv.service
+# Disable extra getty processes
 dab exec systemctl mask container-getty@1.service
 dab exec systemctl mask container-getty@2.service
+# Enable iperf3 service
 dab exec systemctl enable iperf3.service
 
 archive=$(dab finalize 2>&1 | grep "appliance archive:" | cut -d' ' -f3)
