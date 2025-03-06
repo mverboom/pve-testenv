@@ -78,10 +78,9 @@ using a mountpoint.
 
 CTTEMPLATE
 
-This is the name of the template to use when creating a container. A script to create a template using DAB
-is included (createtemplate). It has to be run on the Proxmox server. It requires 1 parameter which should
-be the name of the template to create. This script takes care of some requirements that are needed in the
-containers to make the environment run smoothly.
+This is the name of the template to use when creating a container. The create has an option to create the
+template using DAB. This takes care of the requirements that are needed in the containers to make the
+environment run smoothly.
 
 PROXY
 
