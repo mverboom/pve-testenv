@@ -1,6 +1,6 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.15 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.15">
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.16 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.16">
   <diagram name="Page-1" id="Lpl-98hUYqEditn9nApH">
-    <mxGraphModel dx="1891" dy="829" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2062" dy="839" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -149,6 +149,15 @@
           <mxGeometry x="0.0561" y="-1" relative="1" as="geometry">
             <mxPoint y="1" as="offset" />
           </mxGeometry>
+        </mxCell>
+        <mxCell id="8fyRYyWZdFHAgEhq0r2_-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="8fyRYyWZdFHAgEhq0r2_-1" target="vkmw4OF2QoEgRsS0eEnr-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="8fyRYyWZdFHAgEhq0r2_-1" value="&lt;div&gt;9000/tcp HTTP/1.0 200 OK\r\n\r\nHello this is a test&lt;/div&gt;&lt;div&gt;53/udp testing&lt;/div&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;align=left;size=0.021739130434782608;" vertex="1" parent="1">
+          <mxGeometry x="-120" y="50" width="340" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="8fyRYyWZdFHAgEhq0r2_-4" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;443/tls HTTP/1.0 200 OK\r\n\r\nThis is an encrypted server&lt;/span&gt;&lt;/div&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;align=left;size=0.021739130434782608;" vertex="1" parent="1">
+          <mxGeometry x="-170" y="150" width="340" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

@@ -70,7 +70,7 @@ deploy() {
    ! test -e "$drawio" && { echo "Unable to load drawing."; exit 1; }
 
    echo -n "Converting network drawing..."
-   declare -A hosts nets ips links routes hostsignore
+   declare -A hosts nets ips links routes hostsignore services
    while read -r line; do
       id=$(echo "$line" | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
       test "${id}" = "1" && continue
@@ -88,6 +88,8 @@ deploy() {
             nets[$id]="${value/@*/}"
          elif test "$shape" = "document"; then # Document is routing table
             routes[$id]="$value"
+         elif test "$shape" = "process"; then # Process are service to run
+            services[$id]="$value"
          elif test "${parent}" = "1"; then # this is a host
             hosts[$id]="${value/@*/}"
             test -n "$ignore" && hostsignore[$id]="$value"
@@ -109,7 +111,7 @@ deploy() {
       done
    done
    echo "done"
-   echo "Found ${#hosts[*]} hosts, ${#nets[*]} networks, ${#links[*]} links and ${#routes[*]} routingtables."
+   echo "Found ${#hosts[*]} hosts, ${#nets[*]} networks, ${#links[*]} links, ${#routes[*]} routingtables and ${#services[*]} servicelists."
    test "${#hosts[*]}" -eq 0 && { echo "No hosts found."; exit 1; }
 
    echo -n "Generating configuration..."
@@ -131,6 +133,18 @@ deploy() {
    test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
    test "$DRY" -eq 0 && scp -q "$scriptloc/_pve-testenv.sh" "$CTSERVER:/${CTSHARED}/pve-testenv.sh"
    test "$DRY" -eq 0 && { ssh "$CTSERVER" "chown 100000:100000 \"${CTSHARED}/pve-testenv.sh\"; chmod 700 \"${CTSHARED}/pve-testenv.sh\"; rm -f \"${CTSHARED}/deployed\""; }
+
+   # Search for unconnected servicelist, apply to all hosts
+   globalservice=""
+   for service in "${!services[@]}"; do
+      found=0
+      for linkid in ${!links[@]}; do
+         if test "$( echo "${links[$linkid]}" | grep "@${service}@")" != ""; then
+            found=1
+         fi
+      done
+      test "$found" -eq 0 && globalservice="$service"
+   done
    
    declare -A ctcmds
    
@@ -171,6 +185,18 @@ deploy() {
             done
          fi
       done
+      # Find services
+      test "$DRY" -ne 0 && test "$globalservice" != "" && echo "${hosts[$hostid]} ${services[$globalservice]}"
+      for linkid in "${!links[@]}"; do
+         if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
+            for connid in ${links[$linkid]//@/ }; do
+               if test "${services[$connid]}" != ""; then
+                  test "$DRY" -ne 0 && echo "${hosts[$hostid]} ${services[$connid]}"
+               fi
+            done
+	 fi
+      done
+      # Create full command to run
       ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
       test "${hostsignore[$hostid]}" = "" && { ctcmds[$CTID]="${ctcreate[*]}"; CTID=$(( CTID + 1 )); }
    done
