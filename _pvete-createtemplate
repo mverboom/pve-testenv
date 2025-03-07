@@ -50,7 +50,7 @@ Description: Debian ${VER}
 EOF
 dest=$(dab basedir)
 dab init 2>&1 | log
-dab bootstrap --exim --minimal --exclude openssh-server 2>&1 | log
+dab bootstrap --exim --minimal 2>&1 | log
 dab install lsb-release net-tools tcpdump mtr-tiny socat wget curl telnet netcat-openbsd bash-completion \
 	nmap masscan hping3 iperf3 2>&1 | log
 # Setup ssh connecitivy
@@ -81,6 +81,8 @@ dab exec systemctl mask container-getty@1.service
 dab exec systemctl mask container-getty@2.service
 # Enable iperf3 service
 dab exec systemctl enable iperf3.service
+# Remove cron process
+dab exec apt purge -y cron-daemon-common
 
 archive=$(dab finalize 2>&1 | grep "appliance archive:" | cut -d' ' -f3)
 mv "$archive" "$storagepath"/"$imagename.tar.gz"
