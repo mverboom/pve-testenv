@@ -47,7 +47,7 @@ findbridge() {
 }
 
 createtemplate() {
-   scriptloc=$(dirname $(realpath "$0"))
+   scriptloc="$(dirname $(realpath "$0"))"
    test -e "$scriptloc/_pvete-createtemplate" || { echo "Unable to find _pvete-createtemplate"; exit 1; }
    scp -q "$scriptloc/_pvete-createtemplate" "$CTSERVER:/tmp/" || { echo "Unable to copy script"; exit 1; }
    ssh "${CTSERVER}" "/tmp/_pvete-createtemplate $CTTEMPLATE"
@@ -109,6 +109,8 @@ deploy() {
       done
    done
    echo "done"
+   echo "Found ${#hosts[*]} hosts, ${#nets[*]} networks, ${#links[*]} links and ${#routes[*]} routingtables."
+   test "${#hosts[*]}" -eq 0 && { echo "No hosts found."; exit 1; }
 
    echo -n "Generating configuration..."
    if test "$DRY" -eq 0 -a "$PROXY" != ""; then
@@ -136,7 +138,7 @@ deploy() {
    
    for hostid in "${!hosts[@]}"; do
       unset ctcreate
-      ctcreate=( pct create "${CTID}" "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname ${hosts[$hostid]} )
+      ctcreate=( pct create "${CTID}" "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname "${hosts[$hostid]}" )
       cthostnames[$CTID]="${hosts[$hostid]}"
       test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"$CTID ${hosts[$hostid]}\" >> \"${CTSHARED}/deployed\""
       routing=0
