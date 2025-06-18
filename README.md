@@ -46,6 +46,15 @@ The network drawing needs to conform to a number of conventions in order to make
   * Routing tables should be connected with a line to a host
   * Routing tables should contain "ip r a" compatable syntax, without the "ip r a"
   * Each routing entry has to be on a separate line
+* Services should be drawn using the process icon
+  * Service syntax should be:
+    * port/protocol where protocol can be:
+      * tcp
+      * udp
+    * commands to generate output to return to the client
+  * Each line in a process icon is a serivce
+  * Services that are not connected to a specific host will be deployed on all hosts
+  * Services linked to 1 or more hosts will only be deployed on those hosts
 
 A network drawing can look like this:
 
