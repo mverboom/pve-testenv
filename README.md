@@ -55,6 +55,7 @@ The network drawing needs to conform to a number of conventions in order to make
   * Each line in a process icon is a serivce
   * Services that are not connected to a specific host will be deployed on all hosts
   * Services linked to 1 or more hosts will only be deployed on those hosts
+  * Services are started with socat and the commands are started with SYSTEM. The commands are quoted with double quotes (""), so it is best to use single quotes within specified commands (see example drawing).
 
 A network drawing can look like this:
 
