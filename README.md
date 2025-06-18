@@ -133,6 +133,43 @@ the script, the normal Proxmox commands can also be used.
 The script tries to make it easier to quickly run commands in all containers, stop or start them all and
 access a container based on the name of the container instead of the Proxmox container id.
 
+## Testing services deployed with drawing testing.drawio
+
+```
+pvete enter node3
+```
+
+UDP
+```
+root@node3:~# echo input | socat -T1 udp:node2-vlan100:53 -
+testing
+```
+
+DTLS
+```
+root@node3:~# echo input | socat -T1 openssl-dtls-client:node2-vlan100:443,verify=0 -
+DTLS encrypted reply
+```
+
+TCP
+```
+root@node3:~# telnet node2-vlan100 9000
+Trying 10.10.0.2...
+Connected to node2-vlan100.
+Escape character is '^]'.
+HTTP/1.0 200 OK
+
+Hello this is a test
+Connection closed by foreign host.
+```
+
+TLS
+```
+root@node3:~# unset https_proxy
+root@node3:~# curl -k https://node2-vlan100
+Result output
+```
+
 ## Cleaning up
 
 Removing the containers can be done manually (but this will leave the shared directory and possibly the
