@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/27.0.9 Chrome/134.0.6998.205 Electron/35.4.0 Safari/537.36" version="27.0.9">
   <diagram name="Page-1" id="Lpl-98hUYqEditn9nApH">
-    <mxGraphModel dx="2031" dy="726" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1826" dy="1007" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -160,7 +160,7 @@
           <mxGeometry x="380" y="10" width="380" height="60" as="geometry" />
         </mxCell>
         <mxCell id="8fyRYyWZdFHAgEhq0r2_-4" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;443/tls e&lt;/span&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;cho HTTP/1.0 200; echo &#39;Content-Type: text/plain&#39;; echo; echo &#39;Result output&#39;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;443/dtls echo &#39;DTLS encrypted reply&#39;&lt;/span&gt;&lt;/div&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;align=left;size=0.021739130434782608;" parent="1" vertex="1">
-          <mxGeometry x="-400" y="50" width="520" height="60" as="geometry" />
+          <mxGeometry x="-160" y="10" width="520" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
