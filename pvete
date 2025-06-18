@@ -54,6 +54,36 @@ createtemplate() {
    ssh "${CTSERVER}" "rm -f /tmp/_pvete-createtemplate" || { echo "Unable to remove script"; exit 1; }
 }
 
+servicesexpn() {
+   local cmdline port proto cmd line
+
+   while read -r line; do
+      port="${line/\/*/}"
+      proto="${line/ */}"
+      proto="${proto/*\//}"
+      cmd="${line/$port\/$proto /}"
+
+      cmdline=( "socat" )
+      case "$proto" in
+      "udp")
+         cmdline+=( "udp-listen:$port,fork,reuseaddr" )
+      ;;
+      "dtls")
+         cmdline+=( "openssl-dtls-server:$port,fork,reuseaddr,cert=/shared/cert.crt,key=/shared/cert.key,verify=0" )
+      ;;
+      "tcp")
+         cmdline+=( "tcp-listen:$port,fork,reuseaddr" )
+      ;;
+      "tls")
+         cmdline+=( "openssl-listen:$port,fork,reuseaddr,cert=/shared/cert.crt,key=/shared/cert.key,verify=0" )
+      ;;
+      *) echo "Unknown protocol $proto, aborting"; exit 1 ;;
+      esac
+      cmdline+=( "SYSTEM:\"$cmd\"" )
+      echo "${cmdline[@]}"
+   done < <(echo "$*" | sed "s/@/\n/g" )
+}
+
 deploy() {
    scriptloc=$(dirname $(realpath "$0"))
    test -e "$scriptloc/_pve-testenv.sh" || { echo "Unable to find _pve-testenv.sh"; exit 1; }
@@ -74,7 +104,7 @@ deploy() {
    while read -r line; do
       id=$(echo "$line" | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
       test "${id}" = "1" && continue
-      value=$(echo "$line" | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g' | sed 's/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
+      value=$(echo "$line" | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g; s/&quot;/"/g; s/&#39;/'\''/g;' | sed 's/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
       shape=$(echo "$line" | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
       srcid=$(echo "$line" | sed -n 's/.*source="\([^"]\+\)".*/\1/p')
       tgtid=$(echo "$line" | sed -n 's/.*target="\([^"]\+\)".*/\1/p')
@@ -111,7 +141,7 @@ deploy() {
       done
    done
    echo "done"
-   echo "Found ${#hosts[*]} hosts, ${#nets[*]} networks, ${#links[*]} links, ${#routes[*]} routingtables and ${#services[*]} servicelists."
+   echo "Found ${#hosts[*]} hosts, ${#nets[*]} networks, ${#links[*]} links, ${#routes[*]} routing tables and ${#services[*]} service lists."
    test "${#hosts[*]}" -eq 0 && { echo "No hosts found."; exit 1; }
 
    echo -n "Generating configuration..."
@@ -133,9 +163,10 @@ deploy() {
    test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
    test "$DRY" -eq 0 && scp -q "$scriptloc/_pve-testenv.sh" "$CTSERVER:/${CTSHARED}/pve-testenv.sh"
    test "$DRY" -eq 0 && { ssh "$CTSERVER" "chown 100000:100000 \"${CTSHARED}/pve-testenv.sh\"; chmod 700 \"${CTSHARED}/pve-testenv.sh\"; rm -f \"${CTSHARED}/deployed\""; }
+   test "$DRY" -eq 0 && ssh "$CTSERVER" "openssl req -sha256 -x509 -nodes -days 365 -newkey rsa:2048 -keyout ${CTSHARED}/cert.key -out ${CTSHARED}/cert.crt -subj \"/C=TS/ST=Test/L=Testing/O=Test/OU=Tester/CN=Test CA\" 2> /dev/null; chmod 644 ${CTSHARED}/cert.*"
 
    # Search for unconnected servicelist, apply to all hosts
-   globalservice=""
+   globalservices=()
    for service in "${!services[@]}"; do
       found=0
       for linkid in ${!links[@]}; do
@@ -143,8 +174,14 @@ deploy() {
             found=1
          fi
       done
-      test "$found" -eq 0 && globalservice="$service"
+      test "$found" -eq 0 && globalservices+=( "$service" )
    done
+
+   test "$DRY" -eq 0 && if test "${#globalservices[*]}" -ne 0; then
+      for globalserviceid in "${globalservices[@]}"; do
+         servicesexpn "${services[$globalserviceid]}" | ssh "$CTSERVER" "cat > \"${CTSHARED}/services\""
+      done
+   fi
    
    declare -A ctcmds
    
@@ -186,12 +223,11 @@ deploy() {
          fi
       done
       # Find services
-      test "$DRY" -ne 0 && test "$globalservice" != "" && echo "${hosts[$hostid]} ${services[$globalservice]}"
       for linkid in "${!links[@]}"; do
          if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
             for connid in ${links[$linkid]//@/ }; do
                if test "${services[$connid]}" != ""; then
-                  test "$DRY" -ne 0 && echo "${hosts[$hostid]} ${services[$connid]}"
+                  test "$DRY" -eq 0 && servicesexpn "${services[$connid]}" | ssh "$CTSERVER" "cat >> \"${CTSHARED}/services-${hosts[$hostid]}\""
                fi
             done
 	 fi

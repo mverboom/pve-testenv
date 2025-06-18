@@ -1,6 +1,6 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.16 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.16">
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/27.0.9 Chrome/134.0.6998.205 Electron/35.4.0 Safari/537.36" version="27.0.9">
   <diagram name="Page-1" id="Lpl-98hUYqEditn9nApH">
-    <mxGraphModel dx="2062" dy="839" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2031" dy="726" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -11,7 +11,7 @@
           <mxGeometry x="190" y="220" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="vkmw4OF2QoEgRsS0eEnr-3" value="node2" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="330" y="90" width="120" height="60" as="geometry" />
+          <mxGeometry x="340" y="120" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="vkmw4OF2QoEgRsS0eEnr-4" value="" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.625;exitY=0.2;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" source="vkmw4OF2QoEgRsS0eEnr-2" target="vkmw4OF2QoEgRsS0eEnr-3" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -150,14 +150,17 @@
             <mxPoint y="1" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="8fyRYyWZdFHAgEhq0r2_-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="8fyRYyWZdFHAgEhq0r2_-1" target="vkmw4OF2QoEgRsS0eEnr-3">
+        <mxCell id="8fyRYyWZdFHAgEhq0r2_-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="8fyRYyWZdFHAgEhq0r2_-1" target="vkmw4OF2QoEgRsS0eEnr-3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="8fyRYyWZdFHAgEhq0r2_-1" value="&lt;div&gt;9000/tcp HTTP/1.0 200 OK\r\n\r\nHello this is a test&lt;/div&gt;&lt;div&gt;53/udp testing&lt;/div&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;align=left;size=0.021739130434782608;" vertex="1" parent="1">
-          <mxGeometry x="-120" y="50" width="340" height="60" as="geometry" />
+        <mxCell id="7GMOvdILa5qidcvv1ITl-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="8fyRYyWZdFHAgEhq0r2_-1" target="vkmw4OF2QoEgRsS0eEnr-9" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="8fyRYyWZdFHAgEhq0r2_-4" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;443/tls HTTP/1.0 200 OK\r\n\r\nThis is an encrypted server&lt;/span&gt;&lt;/div&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;align=left;size=0.021739130434782608;" vertex="1" parent="1">
-          <mxGeometry x="-170" y="150" width="340" height="60" as="geometry" />
+        <mxCell id="8fyRYyWZdFHAgEhq0r2_-1" value="&lt;div&gt;9000/tcp echo &#39;HTTP/1.0 200 OK&#39;; echo; echo &#39;Hello this is a test&#39;&lt;/div&gt;&lt;div&gt;53/udp echo &#39;testing&#39;&lt;/div&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;align=left;size=0.021739130434782608;" parent="1" vertex="1">
+          <mxGeometry x="380" y="10" width="380" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="8fyRYyWZdFHAgEhq0r2_-4" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;443/tls e&lt;/span&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;cho HTTP/1.0 200; echo &#39;Content-Type: text/plain&#39;; echo; echo &#39;Result output&#39;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;443/dtls echo &#39;DTLS encrypted reply&#39;&lt;/span&gt;&lt;/div&gt;" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;align=left;size=0.021739130434782608;" parent="1" vertex="1">
+          <mxGeometry x="-400" y="50" width="520" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
