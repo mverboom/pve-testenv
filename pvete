@@ -84,23 +84,11 @@ servicesexpn() {
    done < <(echo "$*" | sed "s/@/\n/g" )
 }
 
-deploy() {
-   scriptloc=$(dirname $(realpath "$0"))
-   test -e "$scriptloc/_pve-testenv.sh" || { echo "Unable to find _pve-testenv.sh"; exit 1; }
-
-   tmplstorage="$(ssh "${CTSERVER}" "pvesm status --content vztmpl | sed -n '2 s/ .*//p'")"
-   test "$tmplstorage" = "" && { echo "Unable to find template storage"; exit 1; }
-   tmplpath="$(ssh "${CTSERVER}" "sed -n \"/^.*: ${tmplstorage}\$/ { :loop; n; s/^\tpath //p; T loop }\" /etc/pve/storage.cfg")"
-   test "$tmplpath" = "" && { echo "Unable to find path for $tmplstorage"; exit 1; }
-   test "$(ssh "${CTSERVER}" "ls ${tmplpath}/template/cache/${CTTEMPLATE}.tar.gz 2> /dev/null")" = "" && { echo "Template $CTTEMPLATE not found."; exit 1; }
-
-   test "$DRY" -eq 0 && { ssh "${CTSERVER}" "mkdir -p \"$CTSHARED\"" || { echo "Unable to create $CTSHARED on $CTSERVER"; exit 1; } }
-
+parsedrawing() {
    drawio="$1"
    ! test -e "$drawio" && { echo "Unable to load drawing."; exit 1; }
 
    echo -n "Converting network drawing..."
-   declare -A hosts nets ips links routes hostsignore services
    while read -r line; do
       id=$(echo "$line" | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
       test "${id}" = "1" && continue
@@ -143,30 +131,11 @@ deploy() {
    echo "done"
    echo "Found ${#hosts[*]} hosts, ${#nets[*]} networks, ${#links[*]} links, ${#routes[*]} routing tables and ${#services[*]} service lists."
    test "${#hosts[*]}" -eq 0 && { echo "No hosts found."; exit 1; }
+}
 
-   echo -n "Generating configuration..."
-   if test "$DRY" -eq 0 -a "$PROXY" != ""; then
-      ssh "${CTSERVER}" "cat - > /lib/systemd/system/pve-testenvproxy.service" <<-EOF
-	[Unit]
-	Description=PVE Testenv proxy
-	After=network.target auditd.service
-	
-	[Service]
-	ExecStart=socat unix-listen:${CTSHARED}/proxy,user=100000,group=100000,fork tcp:$PROXY
-	Type=simple
-	
-	[Install]
-	WantedBy=multi-user.target
-	EOF
-      ssh "$CTSERVER" "systemctl enable pve-testenvproxy.service > /dev/null; systemctl start pve-testenvproxy.service"
-   fi
-   test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
-   test "$DRY" -eq 0 && scp -q "$scriptloc/_pve-testenv.sh" "$CTSERVER:/${CTSHARED}/pve-testenv.sh"
-   test "$DRY" -eq 0 && { ssh "$CTSERVER" "chown 100000:100000 \"${CTSHARED}/pve-testenv.sh\"; chmod 700 \"${CTSHARED}/pve-testenv.sh\"; rm -f \"${CTSHARED}/deployed\""; }
-   test "$DRY" -eq 0 && ssh "$CTSERVER" "openssl req -sha256 -x509 -nodes -days 365 -newkey rsa:2048 -keyout ${CTSHARED}/cert.key -out ${CTSHARED}/cert.crt -subj \"/C=TS/ST=Test/L=Testing/O=Test/OU=Tester/CN=Test CA\" 2> /dev/null; chmod 644 ${CTSHARED}/cert.*"
-
+generatectconfig() {
+   echo -n "Generating container configuration..."
    # Search for unconnected servicelist, apply to all hosts
-   globalservices=()
    for service in "${!services[@]}"; do
       found=0
       for linkid in ${!links[@]}; do
@@ -182,8 +151,6 @@ deploy() {
          servicesexpn "${services[$globalserviceid]}" | ssh "$CTSERVER" "cat > \"${CTSHARED}/services\""
       done
    fi
-   
-   declare -A ctcmds
    
    CTID="$CTIDSTART"
    
@@ -237,7 +204,54 @@ deploy() {
       test "${hostsignore[$hostid]}" = "" && { ctcmds[$CTID]="${ctcreate[*]}"; CTID=$(( CTID + 1 )); }
    done
    echo "done"
+}
 
+modify() {
+   declare -A hosts nets ips links routes hostsignore services
+   parsedrawing "$1"
+}
+
+deploy() {
+   scriptloc=$(dirname $(realpath "$0"))
+   test -e "$scriptloc/_pve-testenv.sh" || { echo "Unable to find _pve-testenv.sh"; exit 1; }
+
+   tmplstorage="$(ssh "${CTSERVER}" "pvesm status --content vztmpl | sed -n '2 s/ .*//p'")"
+   test "$tmplstorage" = "" && { echo "Unable to find template storage"; exit 1; }
+   tmplpath="$(ssh "${CTSERVER}" "sed -n \"/^.*: ${tmplstorage}\$/ { :loop; n; s/^\tpath //p; T loop }\" /etc/pve/storage.cfg")"
+   test "$tmplpath" = "" && { echo "Unable to find path for $tmplstorage"; exit 1; }
+   test "$(ssh "${CTSERVER}" "ls ${tmplpath}/template/cache/${CTTEMPLATE}.tar.gz 2> /dev/null")" = "" && { echo "Template $CTTEMPLATE not found."; exit 1; }
+
+   test "$DRY" -eq 0 && { ssh "${CTSERVER}" "mkdir -p \"$CTSHARED\"" || { echo "Unable to create $CTSHARED on $CTSERVER"; exit 1; } }
+
+   declare -A hosts nets ips links routes hostsignore services
+   parsedrawing "$1"
+
+   echo -n "Generating server configuration..."
+   if test "$DRY" -eq 0 -a "$PROXY" != ""; then
+      ssh "${CTSERVER}" "cat - > /lib/systemd/system/pve-testenvproxy.service" <<-EOF
+	[Unit]
+	Description=PVE Testenv proxy
+	After=network.target auditd.service
+	
+	[Service]
+	ExecStart=socat unix-listen:${CTSHARED}/proxy,user=100000,group=100000,fork tcp:$PROXY
+	Type=simple
+	
+	[Install]
+	WantedBy=multi-user.target
+	EOF
+      ssh "$CTSERVER" "systemctl enable pve-testenvproxy.service > /dev/null; systemctl start pve-testenvproxy.service"
+   fi
+   test "$DRY" -eq 0 && ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
+   test "$DRY" -eq 0 && scp -q "$scriptloc/_pve-testenv.sh" "$CTSERVER:/${CTSHARED}/pve-testenv.sh"
+   test "$DRY" -eq 0 && { ssh "$CTSERVER" "chown 100000:100000 \"${CTSHARED}/pve-testenv.sh\"; chmod 700 \"${CTSHARED}/pve-testenv.sh\"; rm -f \"${CTSHARED}/deployed\""; }
+   test "$DRY" -eq 0 && ssh "$CTSERVER" "openssl req -sha256 -x509 -nodes -days 365 -newkey rsa:2048 -keyout ${CTSHARED}/cert.key -out ${CTSHARED}/cert.crt -subj \"/C=TS/ST=Test/L=Testing/O=Test/OU=Tester/CN=Test CA\" 2> /dev/null; chmod 644 ${CTSHARED}/cert.*"
+   echo "done"
+
+   globalservices=()
+   declare -A ctcmds
+   generatectconfig
+   
    for ctid in "${!ctcmds[@]}"; do
       echo -n "Deploying container $ctid for host ${cthostnames[$ctid]}..."
       test "$DRY" -eq 0 && { ssh "$CTSERVER" "${ctcmds[$ctid]}" > /dev/null 2>&1 || { echo "error"; exit 1; } }
@@ -273,6 +287,10 @@ declare -A cts
 getcts
 
 case "$1" in
+"modify")
+   shift
+   modify "$@"
+;;
 "list")
    for ctid in "${!cts[@]}"; do
       echo "${cts[$ctid]} ($ctid)";
