@@ -152,7 +152,7 @@ The repository contains a ```testing-modified.drawio``` drawing which has the fo
 * add router1 service 9000/tcp + 53/udp
 * remove global service 443/dtls
 
-After the environment in ```teseting.drawio``` is deployed, modifications can be deployed through:
+After the environment in ```testing.drawio``` is deployed, modifications can be deployed through:
 
 ```
 pvete modify testinng-modified.drawio
