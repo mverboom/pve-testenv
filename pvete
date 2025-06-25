@@ -423,7 +423,7 @@ case "$1" in
 "exec")
    id=$(getctid "$2") || { echo "$id"; exit 1; }
    shift 2
-   ssh -t "${CTSERVER}" "pct exec $id -- $@"
+   ssh "${CTSERVER}" "pct exec $id -- $@"
 ;;
 "execall")
    shift
