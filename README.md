@@ -125,6 +125,39 @@ pvete deploy testing.drawio
 The script tries to read the drawing, generates all commands to run and runs the commands. After it is
 finished, the containers should exist on the Proxmox server and should be running.
 
+## Modifying
+
+In larger test environment, destroying and re-deploying can take a lot of time. In order to try to minimize
+the time to make modifications to the testenvironment, a modify option is available. This option will analyze
+the supplied drawing and tries to detect the changes between it and the currently deployed environment.
+
+Currently it should detect and modify:
+* New or removed hosts
+* Changed IP addresses
+* New, removed or changed global or specific services
+* New, removed or changed routing tables
+
+The modify option will not try to modify a container configuration. If a change in the container configuration
+is detected, the container will be removed and re-created.
+
+With changed services or routes, only the containers affected by the change will be restarted.
+
+The repository contains a ```testing-modified.drawio``` drawing which has the following modifications compared to the
+```testing.drawio``` drawing:
+* add node1
+* remove client2
+* change ip client1 in vlan102
+* remove node3 service 9001/tcp
+* remove node2 service 9000/tcp + 53/udp
+* add router1 service 9000/tcp + 53/udp
+* remove global service 443/dtls
+
+After the environment in ```teseting.drawio``` is deployed, modifications can be deployed through:
+
+```
+pvete modify testinng-modified.drawio
+```
+
 ## Using the environment
 
 The script provides a number of options to more easily manage the containers. But it is not mandatory to use
