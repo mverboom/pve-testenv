@@ -9,6 +9,10 @@ test -e "$basedir/routes-$HOSTNAME" && {
 }
 test $(ip -br a l | wc -l) -gt 2 && sysctl -q net.ipv4.conf.all.forwarding=1
 
+while read if ip; do
+   arping -q -w 0 -c 1 -U -I ${if/@*/} ${ip/\/*/}
+done < <( ip -br a l | grep -v "^lo" | awk '{printf "%s %s\n",$1,$3}')
+
 # Start services
 while read -r line; do
    eval "$line &"
