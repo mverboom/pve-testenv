@@ -22,6 +22,7 @@ usage() {
    exit 1
 }
 
+# ToDo: change to read current config?
 getcts() {
    while read -r ctid ctname; do
       cts[$ctid]="$ctname"
@@ -143,11 +144,11 @@ generatectconfig() {
             found=1
          fi
       done
-      test "$found" -eq 0 && globalservices+=( "$service" )
+      test "$found" -eq 0 && globalservices+=( "$(servicesexpn "${services[$service]}")" )
    done
 
    CTID=1
-   
+
    for hostid in "${!hosts[@]}"; do
       unset ctcreate
       ctcreate=( "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname "${hosts[$hostid]}" )
@@ -159,11 +160,11 @@ generatectconfig() {
          if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
             for connid in ${links[$linkid]//@/ }; do
                if test "${routes[$connid]}" != ""; then
-		  hostroutes[$CTID]="${hostroutes[$CTID]}${routes[$connid]//@/\\n}\n"
+                  hostroutes[$CTID]="${hostroutes[$CTID]}${routes[$connid]//@/\\n}\n"
                   routing=1
                fi
             done
-	 fi
+         fi
       done
       # Find network interfaces
       for linkid in "${!links[@]}"; do
@@ -173,7 +174,7 @@ generatectconfig() {
                if test "$net" != ""; then
                   ifcfg="name=${net},bridge=$(findbridge "$net")"
                   test "${ips[$linkid]}" != "" && ifcfg="${ifcfg},ip=${ips[$linkid]/ gw/}"
-		  hostsfile+=( "${ips[$linkid]/\/*/} ${hosts[$hostid]}-${net}" )
+                  hostsfile+=( "${ips[$linkid]/\/*/} ${hosts[$hostid]}-${net}" )
                   test "$routing" -eq 0 -a "${gws[$net]}" != "" && ifcfg="${ifcfg},gw=${gws[$net]}"
                   test "${net/vlan/}" != "${net}" && ifcfg="${ifcfg},tag=${net/vlan/}"
                   ctcreate+=( "--net${ifs}" "$ifcfg" )
@@ -187,10 +188,10 @@ generatectconfig() {
          if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
             for connid in ${links[$linkid]//@/ }; do
                if test "${services[$connid]}" != ""; then
-		  hostservices[$CTID]="${hostservices[$CTID]}$(servicesexpn "${services[$connid]}")\n"
+                  hostservices[$CTID]="${hostservices[$CTID]}$(servicesexpn "${services[$connid]}")\n"
                fi
             done
-	 fi
+         fi
       done
       # Create full command to run
       ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
@@ -204,36 +205,107 @@ generatectconfig() {
 }
 
 modify() {
-   backupdir="$(mktemp -d)"
+   # Read current configuration
+   . <(ssh "${CTSERVER}" "cat ${CTSHARED}/config.cfg" | sed "s/ / old/2")
 
-   # services
-   # services-${host} -> appended
-   # hosts -> appended, without localhost
-   # routes-${host}
-   # deployed -> appended
+   tmplstorage="$(ssh "${CTSERVER}" "pvesm status --content vztmpl | sed -n '2 s/ .*//p'")"
+   test "$tmplstorage" = "" && { echo "Unable to find template storage"; exit 1; }
 
-   mkdir "${backupdir}/current"
-   mkdir "${backupdir}/new"
-   scp -q "${CTSERVER}:${CTSHARED}/services*" "${backupdir}/current"
-   scp -q "${CTSERVER}:${CTSHARED}/hosts" "${backupdir}/current"
-   scp -q "${CTSERVER}:${CTSHARED}/deployed" "${backupdir}/current"
-   scp -q "${CTSERVER}:${CTSHARED}/routes-*" "${backupdir}/current"
-
-   declare -A hosts nets ips links routes hostsignore services
+   # Read new configuration
+   declare -A hosts nets ips links routes hostsignore services ctcmds gws
+   declare -a globalservices hostroutes hostsfile hostservices hostnames
    parsedrawing "$1"
-
-   globalservices=()
-   declare -A ctcmds
-   ssh "$CTSERVER" "echo \"127.0.0.1 localhost\" > \"${CTSHARED}/hosts\""
-   ssh "$CTSERVER" "rm -f ${CTSHARED}/routes-* ${CTSHARED}/services ${CTSHARED}/deployed"
    generatectconfig
 
-   scp -q "${CTSERVER}:${CTSHARED}/services*" "${backupdir}/new"
-   scp -q "${CTSERVER}:${CTSHARED}/hosts" "${backupdir}/new"
-   scp -q "${CTSERVER}:${CTSHARED}/deployed" "${backupdir}/new"
-   scp -q "${CTSERVER}:${CTSHARED}/routes-*" "${backupdir}/new"
+   # Generate ctids for new setup finding them in the old config
+   for hostid in ${!hostnames[*]}; do
+      for oldhostid in ${!oldhostnames[*]}; do
+         test "${oldhostnames[$oldhostid]}" = "${hostnames[$hostid]}" && { ctids[$hostid]="${oldctids[$oldhostid]}"; break ; }
+      done
+   done
 
-   # rm -rf "${backupdir}"
+   # Find hosts that need to be removed
+   for hostid in "${!oldhostnames[@]}"; do
+      hostname="${oldhostnames[$hostid]}"
+      if [[ ! " ${hostnames[@]} " =~ " ${hostname} " ]]; then
+         echo "Remove ${hostname}"
+         # destroy container
+         runcmd ssh "${CTSERVER}" "pct stop ${oldctids[$hostid]}; pct destroy ${oldctids[$hostid]}"
+         runcmd ssh "${CTSERVER}" "rm -f ${CTSHARED}/routes-${hostname} ${CTSHARED}/services-${hostname}"
+      fi
+   done
+
+   # Generate hosts file
+   printf "%s\n" "${hostsfile[@]}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}\"/hosts"
+
+   # Generate service and routing files
+   runcmd ssh "${CTSERVER}" "rm -f ${CTSHARED}/routes-* ${CTSHARED}/services-*"
+   for hostid in "${!hostnames[@]}"; do
+      test "${hostroutes[$hostid]}" != "" && echo -e "${hostroutes[$hostid]}" | runcmd ssh "${CTSERVER}" "cat > \"${CTSHARED}/routes-${hostnames[$hostid]}\""
+      test "${hostservices[$hostid]}" != "" && echo -e "${hostservices[$hostid]}" | runcmd ssh "${CTSERVER}" "cat > \"${CTSHARED}/services-${hostnames[$hostid]}\""
+   done
+
+   restart=()
+   # Tag all hosts restart because of global service file change
+   if test "${globalservices[@]}" != "${oldglobalservices[@]}"; then
+      echo "Global services changed, mark all for restart"
+      restart=( ${ctids[*]} )
+   fi
+
+   # Find hosts that need to be restarted because of services or routing change
+   for hostid in "${!hostnames[@]}"; do
+      for oldhostid in "${!oldhostnames[@]}"; do
+         if test "${hostnames[$hostid]}" = "${oldhostnames[$oldhostid]}"; then
+            test "${hostroutes[$hostid]}" != "${oldhostroutes[$oldhostid]}" && restart+=( ${ctids[$hostid]} )
+            test "${hostservices[$hostid]}" != "${oldhostservices[$oldhostid]}" && restart+=( ${ctids[$hostid]} )
+         fi
+      done
+   done
+
+   # Find hosts that need to be created
+   for hostid in "${!hostnames[@]}"; do
+      if [[ ! " ${oldhostnames[@]} " =~ " ${hostnames[$hostid]} " ]]; then
+         ctid=$(( "$( printf "%d\n" ${ctids[*]} | sort | tail -1 )" + 1 ))
+         ctids[$hostid]="$ctid"
+         echo "Create ${hostnames[$hostid]} $ctid"
+         runcmd ssh "${CTSERVER}" "pct create $ctid ${ctcmds[$hostid]}"
+      fi
+   done
+
+   # Generate deployed file
+   for hostid in ${!hostnames[*]}; do
+      echo "${ctids[$hostid]} ${hostnames[$hostid]}"
+   done | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}\"/deployed"
+
+   # Find hosts for which the config has changed
+   recreate=()
+   for hostid in "${!hostnames[@]}"; do
+      for oldhostid in "${!oldhostnames[@]}"; do
+         if test "${oldhostnames[$oldhostid]}" = "${hostnames[$hostid]}"; then
+            test "${oldctcmds[$oldhostid]}" != "${ctcmds[$hostid]}" && recreate+=( $hostid )
+            break
+         fi
+      done
+   done
+   for hostid in ${recreate[*]}; do
+      echo "Recreating ${hostnames[$hostid]}"
+      runcmd ssh "${CTSERVER}" "pct stop ${ctids[$hostid]}; pct destroy ${ctids[$hostid]}"
+      runcmd ssh "${CTSERVER}" "pct create ${ctids[$hostid]} ${ctcmds[$hostid]}"
+      for restartid in ${!restart[*]}; do
+         test "${restart[$restartid]}" = "${ctids[$hostid]}" && unset restart[$restartid]
+      done
+   done
+
+   # Restart hosts
+   test "${#restart[*]}" -gt 0 && for ctid in $(printf "%d\n" ${restart[*]}| sort -u); do
+      echo "Restarting container $ctid"
+      runcmd ssh "${CTSERVER}" "pct stop $ctid; pct start $ctid"
+   done
+
+   # Save new config
+   declare -p globalservices hostsfile ctcmds hostroutes hostservices hostnames ctids | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/config.cfg\""
+
+   exit 0
 }
 
 runcmd() {
@@ -284,7 +356,7 @@ deploy() {
 
    if test "${#globalservices[*]}" -ne 0; then
       for globalserviceid in "${globalservices[@]}"; do
-         servicesexpn "${services[$globalserviceid]}" | runcmd ssh "$CTSERVER" "cat >> \"${CTSHARED}/services\""
+         printf "%s\n" "${globalservices[@]}" | runcmd ssh "$CTSERVER" "cat >> \"${CTSHARED}/services\""
       done
    fi
 
