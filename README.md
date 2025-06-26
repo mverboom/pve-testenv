@@ -280,7 +280,6 @@ This will connect to the specified port number over tcp.
 
 This will connect to the specified port number over udp.
 
-
 ```<port>/tls```
 
 This will connect to the specified port number over tls (without certificate verification).
@@ -323,12 +322,29 @@ This specifies a value that should be recieved over the tested connection. This 
 If an expected result is spread over multiple lines, a newline character can be included in the result. Make
 sure to double escape it (```\\n```).
 
+If no output is expected, the expected result should be ```<>```.
+
 Bear in mind that when a test is run over a higher level protocol like http, the result will be the body
 of the reply and it will not include any headers.
 
-An example:
+Examples:
 
 ```result=DTLS encrypted reply```
+
+```result=<>```
+
+### Notes on creating tests
+
+**UDP tests**
+
+Running udp tests can be tricky. In the background socat is being used for running the UDP test. It will
+send out a packet and will wait for a timeout period for a reply. However, as UDP is connectionless,
+recieving no packet is not seen as an error.
+Using tests to validate a firewall is blocking traffing for UDP, it is best to define an actual UDP
+service on one or more targets. Make the service return a value. When checking UDP set the ```result```
+to ```ok``` and ```expect``` and empty (```<>```) result. That way, if  the firewall is not setup correctly
+(either with a reject rule or allowing traffic) the test will fail, because the expected output is not
+empty.
 
 ### Running tests
 
