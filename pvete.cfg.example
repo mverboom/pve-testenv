@@ -6,6 +6,8 @@ CTIDSTART=500
 CTSHARED=/var/tmp/shared
 # Container template to use
 CTTEMPLATE=mycustomtemplate
+# Parallellism to use when possible (container restarts for example)
+#CTJOBS=2
 
 # Container settings
 # Storage name where rootfs should be created (defaults to pve)

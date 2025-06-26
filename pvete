@@ -22,6 +22,30 @@ usage() {
    exit 1
 }
 
+runjob() {
+      "$@" &
+      running[$slot]="$!"
+      if test "${#running[*]}" -eq $CTJOBS; then
+         wait -p pid -n ${running[*]}
+         for slot in ${!running[@]}; do
+            test "${running[$slot]}" = "$pid" && break
+         done
+         unset 'running[slot]'
+      else
+         slot=$(( slot + 1 ))
+      fi
+}
+
+runend() {
+   while test "${#running[*]}" -gt 0; do
+      wait -p pid -n ${running[*]}
+      for slot in ${!running[@]}; do
+         test "${running[$slot]}" = "$pid" && break
+      done
+      unset 'running[slot]'
+   done
+}
+
 # ToDo: change to read current config?
 getcts() {
    while read -r ctid ctname; do
@@ -250,6 +274,7 @@ modify() {
    if test "${globalservices[@]}" != "${oldglobalservices[@]}"; then
       echo "Global services changed, mark all for restart"
       restart=( ${ctids[*]} )
+      echo -e "${globalservices[@]}" | runcmd ssh "${CTSERVER}" "cat > \"${CTSHARED}/services\""
    fi
 
    # Find hosts that need to be restarted because of services or routing change
@@ -297,10 +322,13 @@ modify() {
    done
 
    # Restart hosts
-   test "${#restart[*]}" -gt 0 && for ctid in $(printf "%d\n" ${restart[*]}| sort -u); do
-      echo "Restarting container $ctid"
-      runcmd ssh "${CTSERVER}" "pct stop $ctid; pct start $ctid"
-   done
+   if test "${#restart[*]}" -gt 0; then 
+      for ctid in $(printf "%d\n" ${restart[*]}| sort -u); do
+         echo "Restarting container $ctid"
+         runjob runcmd ssh "${CTSERVER}" "pct stop $ctid; pct start $ctid"
+      done
+      runend
+   fi
 
    # Save new config
    declare -p globalservices hostsfile ctcmds hostroutes hostservices hostnames ctids | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/config.cfg\""
@@ -403,6 +431,7 @@ for cfgdir in "$cfgloc/" "$HOME/."; do
    test -e "${cfgdir}${CFGNAME}" && { . "${cfgdir}${CFGNAME}"; cfgfound=1; break ; }
 done
 test "$cfgfound" -eq 0 && { echo "No configuration file found"; usage; }
+test "$CTJOBS" = "" && CTJOBS=2
 
 test "$1" = "deploy" && { shift; deploy "$@"; exit 0; }
 test "$1" = "createtemplate" && { shift; createtemplate; exit 0; }
