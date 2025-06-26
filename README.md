@@ -217,7 +217,7 @@ Result output
 ```
 ## Automatic testing of the environment
 
-The script ```pveruntest``` is provided in order to assist with automating tests in a deployed environment. The script uses a
+The script ```pveruntests``` is provided in order to assist with automating tests in a deployed environment. The script uses a
 configuration file to read the tests, and will process them. It will show all tests that are incorrect.
 
 ### Test configuration
@@ -333,7 +333,7 @@ times because of the wait for timeouts. Parallellism can really improve test dur
 Included is an example ```tests.ini``` file which has tests that can be ran against a deployed ```testing.drawio``` environment:
 
 ```
-pveruntest -c tests.ini
+pveruntests -c tests.ini
 ```
 
 This shoud result in 2 tests that fail, tests error and test4:
@@ -346,7 +346,7 @@ This shoud result in 2 tests that fail, tests error and test4:
 Default it will run tests with a parallellism of 2, but this can be easily increased, for example to 4:
 
 ```
-pveruntest -j 4 -c tests.ini
+pveruntests -j 4 -c tests.ini
 ```
 
 ## Cleaning up
