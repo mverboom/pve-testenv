@@ -69,7 +69,14 @@ runtest() {
    testresult="$?"
    test "$testresult" -eq 0 -a "${t_result[$test]}" = "fail" && { echo "[${test}]: test succeeded, should fail (output: $testoutput)"; return; }
    test "$testresult" -ne 0 -a "${t_result[$test]}" = "ok" && { echo "[${test}]: test failed, should succeed (output: $testoutput)"; return; }
-   test "${t_expect[$test]}" != "" -a "$(echo -e "${t_expect[$test]}")" != "$testoutput" && { echo "[${test}]: result is not exepected (${testoutput})."; return ; }
+   if test "${t_expect[$test]}" != ""; then
+      expected="${t_expect[$test]}"
+      test "$expected" = "<>" && expected=""
+      if test "$(echo -e "$expected")" != "$testoutput"; then
+        echo "[${test}]: result is not exepected (output: ${testoutput})."
+        return
+      fi
+   fi
 }
 
 usage() {
