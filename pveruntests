@@ -56,7 +56,7 @@ runtest() {
       port="${t_service[$test]/\/*/}"
       proto="${t_service[$test]/*\//}"
       case "$proto" in
-      "tcp") testcmd=( socat -T1 tcp-connect:${t_to[$test]}:$port - );;
+      "tcp") testcmd=( socat -T1 tcp-connect:${t_to[$test]}:$port,connect-timeout=2 - );;
       "tls") testcmd=( socat -T1 openssl-connect:${t_to[$test]}:$port,verify=0 - );;
       "udp") testcmd=( socat -T1 udp-connect:${t_to[$test]}:$port - "<" "<(echo)" );;
       "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0 - );;
@@ -65,7 +65,7 @@ runtest() {
       *) echo "[${test}]: Unknown protocol ${proto}"; return ;;
       esac
    fi
-   testoutput="$(./pvete "${pveteopts[@]}" exec ${t_from[$test]} "${testcmd[@]}" 2>&1 )"
+   testoutput="$(pvete "${pveteopts[@]}" exec ${t_from[$test]} "${testcmd[@]}" 2>&1 )"
    testresult="$?"
    test "$testresult" -eq 0 -a "${t_result[$test]}" = "fail" && { echo "[${test}]: test succeeded, should fail (output: $testoutput)"; return; }
    test "$testresult" -ne 0 -a "${t_result[$test]}" = "ok" && { echo "[${test}]: test failed, should succeed (output: $testoutput)"; return; }
