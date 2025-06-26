@@ -32,7 +32,7 @@ Next is the option to run tests against this environment. It has the following f
 * Define test cases in ini style config files with support for including other configuration files
 * Tests can be defined as that the should fail or succeed (based on exit value of command) Aditionally a check can be done on the returned output.
 * The following tests are available:
-  * icmp
+  * ping
   * tcp service
   * udp service
   * tls service
@@ -263,7 +263,7 @@ For example:
 
 This option is the service that needs to be connected to. There are multiple options:
 
-```icmp```
+```ping```
 
 This will run a ping test to the destination.
 
