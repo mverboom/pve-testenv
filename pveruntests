@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+
+runjob() {
+      $1 &
+      running[$slot]="$!"
+      if test "${#running[*]}" -eq $JOBS; then
+         wait -p pid -n ${running[*]}
+         for slot in ${!running[@]}; do
+            test "${running[$slot]}" = "$pid" && break
+         done
+         unset 'running[slot]'
+      else
+         slot=$(( slot + 1 ))
+      fi
+}
+
+runend() {
+   while test "${#running[*]}" -gt 0; do
+      wait -p pid -n ${running[*]}
+      for slot in ${!running[@]}; do
+         test "${running[$slot]}" = "$pid" && break
+      done
+      unset 'running[slot]'
+   done
+}
+
+readconfig() {
+   cfg="$1"
+
+   declare -g -a tests
+   while IFS='= ' read var val; do
+      test "${var:0:1}" = "#" && continue
+      if [[ $var == \[*] ]]; then
+          section="${var:1:-1}"
+          [[ " ${tests[@]} " =~ " ${section} " ]] && { echo "Redefinition of section $section."; exit 1; }
+          tests+=( "$section" )
+      elif [[ $val ]]; then
+          if test "$var" = "include"; then
+             readconfig "$val"
+          else
+             declare -g -A "t_${var}[$section]=$val"
+          fi
+      fi
+   done < "$cfg"
+}
+
+runtest() {
+   test="$1"
+
+   if test "${t_service[$test]/\//}" = "${t_service[$test]}"; then
+      case "${t_service[$test]}" in
+      "ping") testcmd=( fping -q -c 2 -r 0 ${t_to[$test]}) ;;
+      *) echo "[${test}]: Unknown service ${t_service[$test]}"; return ;;
+      esac
+   else
+      port="${t_service[$test]/\/*/}"
+      proto="${t_service[$test]/*\//}"
+      case "$proto" in
+      "tcp") testcmd=( socat -T1 tcp-connect:${t_to[$test]}:$port - );;
+      "tls") testcmd=( socat -T1 openssl-connect:${t_to[$test]}:$port,verify=0 - );;
+      "udp") testcmd=( socat -T1 udp-connect:${t_to[$test]}:$port - "<" "<(echo)" );;
+      "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0 - );;
+      "http") testcmd=( curl --connect-timeout 2 --noproxy \\\* -s http://${t_to[$test]}:$port );;
+      "https") testcmd=( curl --connect-timeout 2 --noproxy \\\* -k -s https://${t_to[$test]}:$port );;
+      *) echo "[${test}]: Unknown protocol ${proto}"; return ;;
+      esac
+   fi
+   testoutput="$(./pvete "${pveteopts[@]}" exec ${t_from[$test]} "${testcmd[@]}" 2>&1 )"
+   testresult="$?"
+   test "$testresult" -eq 0 -a "${t_result[$test]}" = "fail" && { echo "[${test}]: test succeeded, should fail (output: $testoutput)"; return; }
+   test "$testresult" -ne 0 -a "${t_result[$test]}" = "ok" && { echo "[${test}]: test failed, should succeed (output: $testoutput)"; return; }
+   test "${t_expect[$test]}" != "" -a "$(echo -e "${t_expect[$test]}")" != "$testoutput" && { echo "[${test}]: result is not exepected (${testoutput})."; return ; }
+}
+
+usage() {
+   echo "$0"
+   echo
+   echo " -c <filename>    Test configuration .ini file"
+   echo " -j <jobs>        Parallell jobs to run (default $JOBS)"
+   exit 1
+}
+
+JOBS=2
+declare -a pveteopts
+while getopts :j:c: opt; do
+   case $opt in
+   c) CFGNAME="$OPTARG" ;;
+   j) JOBS="$OPTARG" ;;
+   \?) echo "Unknown option: -$OPTARG"; usage ;;
+   :) echo "Option -$OPTARG requires argument"; usage ;;
+   esac
+done
+shift $((OPTIND-1))
+
+test "$CFGNAME" = "" && { echo "No configuration specified."; usage; }
+
+readconfig "$CFGNAME"
+
+runtests=( ${tests[@]} )
+test "$*" != "" && runtests=( "$@" )
+for test in "${runtests[@]}"; do
+   test "${t_from[$test]}" = "" && { echo "No such test $test"; continue; }
+   runjob "runtest $test"
+done
+runend
