@@ -215,7 +215,7 @@ root@node3:~# unset https_proxy
 root@node3:~# curl -k https://node2-vlan100
 Result output
 ```
-## Testing the environment
+## Automatic testing of the environment
 
 The script ```pveruntest``` is provided in order to assist with automating tests in a deployed environment. The script uses a
 configuration file to read the tests, and will process them. It will show all tests that are incorrect.
