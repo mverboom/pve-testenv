@@ -72,7 +72,7 @@ runtest() {
    if test "${t_expect[$test]}" != ""; then
       expected="${t_expect[$test]}"
       test "$expected" = "<>" && expected=""
-      if test "$(echo -e "$expected")" != "$testoutput"; then
+      if ! [[ $testoutput =~ $(echo -e "$expected") ]]; then
         echo "[${test}]: result is not exepected (output: ${testoutput})."
         return
       fi

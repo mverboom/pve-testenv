@@ -324,6 +324,9 @@ sure to double escape it (```\\n```).
 
 If no output is expected, the expected result should be ```<>```.
 
+The value of ```expect``` is evaluated using the ```[[ =~ ]]``` expression in bash, so
+the value of ```expect``` is treated as a regular expression.
+
 Bear in mind that when a test is run over a higher level protocol like http, the result will be the body
 of the reply and it will not include any headers.
 
