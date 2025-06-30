@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 basedir="/shared"
-test -e "$basedir/hosts" && cp "$basedir/hosts" /etc/hosts
+test -e "$basedir/hosts" && ln -sf "${basedir}/hosts" /etc/hosts
 rm -f /etc/resolv.conf
 test -e "$basedir/routes-$HOSTNAME" && {
    while read route; do
