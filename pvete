@@ -325,7 +325,7 @@ modify() {
    if test "${#restart[*]}" -gt 0; then 
       for ctid in $(printf "%d\n" ${restart[*]}| sort -u); do
          echo "Restarting container $ctid"
-         runjob runcmd ssh "${CTSERVER}" "pct stop $ctid; pct start $ctid"
+         runjob runcmd ssh "${CTSERVER}" "lxc-stop -n $ctid; lxc-start -n $ctid"
       done
       runend
    fi
@@ -466,13 +466,13 @@ case "$1" in
 ;;
 "restart")
    id=$(getctid "$2") || { echo "$id"; exit 1; }
-   ssh "${CTSERVER}" "pct stop $id; pct start $id"
+   ssh "${CTSERVER}" "lxc-stop -n $id; lxc-start -n $id"
 ;;
 "restartall")
    echo -n "Restarting container"
    for ctid in "${!cts[@]}"; do
       echo -n " ${cts[$ctid]}"
-      runjob runcmd ssh "${CTSERVER}" "pct stop $ctid; pct start $ctid"
+      runjob runcmd ssh "${CTSERVER}" "lxc-stop -n $ctid; lxc-start -n $ctid"
    done
    runend
    echo
@@ -481,7 +481,7 @@ case "$1" in
    echo -n "Starting container"
    for ctid in "${!cts[@]}"; do
       echo -n " ${cts[$ctid]}"
-      runjob runcmd ssh "${CTSERVER}" "pct start $ctid"
+      runjob runcmd ssh "${CTSERVER}" "lxc-start -n $ctid"
    done
    runend
    echo
@@ -490,7 +490,7 @@ case "$1" in
    echo -n "Stopping container"
    for ctid in "${!cts[@]}"; do
       echo -n " ${cts[$ctid]}"
-      runjob runcmd ssh "${CTSERVER}" "pct stop $ctid"
+      runjob runcmd ssh "${CTSERVER}" "lxc-stop -n $ctid"
    done
    runend
    echo
