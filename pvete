@@ -481,16 +481,18 @@ case "$1" in
    echo -n "Starting container"
    for ctid in "${!cts[@]}"; do
       echo -n " ${cts[$ctid]}"
-      ssh "${CTSERVER}" "pct start $ctid"
+      runjob runcmd ssh "${CTSERVER}" "pct start $ctid"
    done
+   runend
    echo
 ;;
 "stopall")
    echo -n "Stopping container"
    for ctid in "${!cts[@]}"; do
       echo -n " ${cts[$ctid]}"
-      ssh "${CTSERVER}" "pct stop $ctid"
+      runjob runcmd ssh "${CTSERVER}" "pct stop $ctid"
    done
+   runend
    echo
 ;;
 "destroyall")
