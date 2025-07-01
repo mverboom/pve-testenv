@@ -472,8 +472,9 @@ case "$1" in
    echo -n "Restarting container"
    for ctid in "${!cts[@]}"; do
       echo -n " ${cts[$ctid]}"
-      ssh "${CTSERVER}" "pct stop $ctid; pct start $ctid"
+      runjob runcmd ssh "${CTSERVER}" "pct stop $ctid; pct start $ctid"
    done
+   runend
    echo
 ;;
 "startall")
