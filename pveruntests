@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
 runjob() {
+      declare -g -a result
       $1 &
       running[$slot]="$!"
       if test "${#running[*]}" -eq $JOBS; then
          wait -p pid -n ${running[*]}
+         result+=( $? )
          for slot in ${!running[@]}; do
             test "${running[$slot]}" = "$pid" && break
          done
@@ -50,7 +52,7 @@ runtest() {
    if test "${t_service[$test]/\//}" = "${t_service[$test]}"; then
       case "${t_service[$test]}" in
       "ping") testcmd=( fping -q -c 2 -r 0 ${t_to[$test]}) ;;
-      *) echo "[${test}]: Unknown service ${t_service[$test]}"; return ;;
+      *) echo "[${test}]: Unknown service ${t_service[$test]}"; return 1 ;;
       esac
    else
       port="${t_service[$test]/\/*/}"
@@ -62,21 +64,22 @@ runtest() {
       "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0 - );;
       "http") testcmd=( curl --connect-timeout 2 --noproxy \\\* -s http://${t_to[$test]}:$port );;
       "https") testcmd=( curl --connect-timeout 2 --noproxy \\\* -k -s https://${t_to[$test]}:$port );;
-      *) echo "[${test}]: Unknown protocol ${proto}"; return ;;
+      *) echo "[${test}]: Unknown protocol ${proto}"; return 1 ;;
       esac
    fi
    testoutput="$(pvete "${pveteopts[@]}" exec ${t_from[$test]} "${testcmd[@]}" 2>&1 )"
    testresult="$?"
-   test "$testresult" -eq 0 -a "${t_result[$test]}" = "fail" && { echo "[${test}]: test succeeded, should fail (output: $testoutput)"; return; }
-   test "$testresult" -ne 0 -a "${t_result[$test]}" = "ok" && { echo "[${test}]: test failed, should succeed (output: $testoutput)"; return; }
+   test "$testresult" -eq 0 -a "${t_result[$test]}" = "fail" && { echo "[${test}]: test succeeded, should fail (output: \"$testoutput\")"; return 1; }
+   test "$testresult" -ne 0 -a "${t_result[$test]}" = "ok" && { echo "[${test}]: test failed, should succeed (output: \"$testoutput\")"; return 1; }
    if test "${t_expect[$test]}" != ""; then
       expected="${t_expect[$test]}"
       test "$expected" = "<>" && expected=""
       if ! [[ $testoutput =~ $(echo -e "$expected") ]]; then
-        echo "[${test}]: result is not exepected (output: ${testoutput})."
-        return
+        echo "[${test}]: result is not exepected (expected: \"${expected}\", output: \"${testoutput}\")."
+        return 1
       fi
    fi
+   return 0
 }
 
 usage() {
@@ -103,10 +106,18 @@ test "$CFGNAME" = "" && { echo "No configuration specified."; usage; }
 
 readconfig "$CFGNAME"
 
+result=()
 runtests=( ${tests[@]} )
 test "$*" != "" && runtests=( "$@" )
+start=$(date "+%s%N")
 for test in "${runtests[@]}"; do
    test "${t_from[$test]}" = "" && { echo "No such test $test"; continue; }
    runjob "runtest $test"
 done
 runend
+end=$(date "+%s%N")
+time=$(printf "%0.2f" $(echo "($end - $start) / 1000000000" | bc -l))
+tps=$(printf "%0.1f" $(echo "${#result[*]} / $time" | bc -l))
+echo "Ran ${#result[*]} tests in $time seconds ($tps tests per second)."
+fail=$(printf "%d\n" ${result[*]} | sort | uniq -c | sed "s/  //g" | grep " 1$" | cut -d ' ' -f 1)
+echo "$fail of ${#result[*]} tests failed ($(printf "%0.1f" $(echo "$fail / ${#result[*]} * 100" | bc -l))%)"
