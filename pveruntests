@@ -118,7 +118,8 @@ done
 runend
 end=$(date "+%s%N")
 time=$(printf "%0.2f" $(echo "($end - $start) / 1000000000" | bc -l))
-tps=$(printf "%0.1f" $(echo "${#result[*]} / $time" | bc -l))
+tps=0
+test "$time" != "0.00" && tps=$(printf "%0.1f" $(echo "${#result[*]} / $time" | bc -l))
 echo "Ran ${#result[*]} tests in $time seconds ($tps tests per second)."
 fail=$(printf "%d\n" ${result[*]} | sort | uniq -c | sed "s/  //g" | grep " 1$" | cut -d ' ' -f 1)
 test "$fail" = "" && fail=0
