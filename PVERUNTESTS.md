@@ -13,10 +13,15 @@ Any line that is empty or starts with a ```#``` will be ignored.
 
 In order to make it possible to split large amounts of tests over multiple files, it is possible to include files. This can
 be done through the ```include``` statement. This can be anywhere in the file. Any ```include``` statement will insert the
-tests at that place (in case order is important). This looks as follows:
+tests at that place (in case order is important).
+
+Wildcards (and directories) can be used and will expand to relevant filenames.
+
+This looks as follows:
 
 ```
 include=/tests/webservers.ini
+include=/old-tests/*.ini
 ```
 
 #### Tests

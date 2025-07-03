@@ -35,11 +35,14 @@ readconfig() {
       test "${var:0:1}" = "#" && continue
       if [[ $var == \[*] ]]; then
           section="${var:1:-1}"
-          [[ " ${tests[@]} " =~ " ${section} " ]] && { echo "Redefinition of section $section."; exit 1; }
+          [[ " ${tests[@]} " =~ " ${section} " ]] && { echo "config file \"${cfg}\": Redefinition of section $section."; exit 1; }
           tests+=( "$section" )
       elif [[ $val ]]; then
           if test "$var" = "include"; then
-             readconfig "$val"
+             for cfgfile in $val; do
+                echo "including $cfgfile"
+                readconfig "$cfgfile"
+             done
           else
              declare -g -A "t_${var}[$section]=$val"
           fi
@@ -62,7 +65,7 @@ runtest() {
       "tcp") testcmd=( socat -T1 tcp-connect:${t_to[$test]}:$port,connect-timeout=2 - );;
       "tls") testcmd=( socat -T1 openssl-connect:${t_to[$test]}:$port,verify=0 - );;
       "udp") testcmd=( socat -T1 udp-connect:${t_to[$test]}:$port - "<" "<(echo)" );;
-      "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0 - );;
+      "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0,connect-timeout=2 - );;
       "http") testcmd=( curl --connect-timeout 2 --noproxy \\\* -s http://${t_to[$test]}:$port );;
       "https") testcmd=( curl --connect-timeout 2 --noproxy \\\* -k -s https://${t_to[$test]}:$port );;
       *) echo "[${test}]: Unknown protocol ${proto}"; return 1 ;;
