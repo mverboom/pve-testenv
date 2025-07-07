@@ -65,7 +65,7 @@ runtest() {
       "tcp") testcmd=( socat -T1 tcp-connect:${t_to[$test]}:$port,connect-timeout=2 - );;
       "tls") testcmd=( socat -T1 openssl-connect:${t_to[$test]}:$port,verify=0 - );;
       "udp") testcmd=( socat -T1 udp-connect:${t_to[$test]}:$port - "<" "<(echo)" );;
-      "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0,connect-timeout=2 - );;
+      "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0 - );;
       "http") testcmd=( curl --connect-timeout 2 --noproxy \\\* -s http://${t_to[$test]}:$port );;
       "https") testcmd=( curl --connect-timeout 2 --noproxy \\\* -k -s https://${t_to[$test]}:$port );;
       *) echo "[${test}]: Unknown protocol ${proto}"; return 1 ;;
