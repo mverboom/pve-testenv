@@ -10,6 +10,7 @@ usage() {
    echo "  createtemplate     Create/overwrite template on server"
    echo "  deploy <drawing>   Deploy containers accoring to drawio drawing"
    echo "  modify <drawing>   Attempt to apply changes to deployed drawing setup"
+   echo "  parse <drawing>    Attempt to parse the drawing and show statistics, no actions taken"
    echo "  list               Show deployed containers"
    echo "  enter <name>       Start shell on container"
    echo "  exec <name> <cmd>  Execute cmd in container"
@@ -181,7 +182,7 @@ generatectconfig() {
       ifs=0
       # Find routing tables
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
+         if [[ ${links[$linkid]} =~ @${hostid}@ ]]; then
             for connid in ${links[$linkid]//@/ }; do
                if test "${routes[$connid]}" != ""; then
                   hostroutes[$CTID]="${hostroutes[$CTID]}${routes[$connid]//@/\\n}\n"
@@ -192,7 +193,7 @@ generatectconfig() {
       done
       # Find network interfaces
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
+         if [[ ${links[$linkid]} =~ @${hostid}@ ]]; then
             for connid in ${links[$linkid]//@/ }; do
                net="${nets[$connid]}"
                if test "$net" != ""; then
@@ -209,7 +210,7 @@ generatectconfig() {
       done
       # Find services
       for linkid in "${!links[@]}"; do
-         if test "$( echo "${links[$linkid]}" | grep "@${hostid}@")" != ""; then
+         if [[ ${links[$linkid]} =~ @${hostid}@ ]]; then
             for connid in ${links[$linkid]//@/ }; do
                if test "${services[$connid]}" != ""; then
                   hostservices[$CTID]="${hostservices[$CTID]}$(servicesexpn "${services[$connid]}")\n"
@@ -226,6 +227,23 @@ generatectconfig() {
       fi
    done
    echo "done"
+}
+
+parse() {
+   start=$(date "+%s%N")
+   # Read new configuration
+   declare -A hosts nets ips links routes hostsignore services ctcmds gws
+   declare -a globalservices hostroutes hostsfile hostservices hostnames
+   parsedrawing "$1"
+   drawend=$(date "+%s%N")
+   drawing=$(printf "%0.2f" $(echo "($drawend - $start) / 1000000000" | bc -l))
+   echo "Drawing parsing: $drawing seconds"
+   generatectconfig
+   end=$(date "+%s%N")
+   configparsing=$(printf "%0.2f" $(echo "($end - $drawend) / 1000000000" | bc -l))
+   time=$(printf "%0.2f" $(echo "($end - $start) / 1000000000" | bc -l))
+   echo "Configuration generation: $configparsing seconds"
+   echo "Total time: $time seconds"
 }
 
 modify() {
@@ -443,6 +461,10 @@ case "$1" in
 "modify")
    shift
    modify "$@"
+;;
+"parse")
+   shift
+   parse "$@"
 ;;
 "list")
    for ctid in "${!cts[@]}"; do
