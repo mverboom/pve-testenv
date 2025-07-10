@@ -28,3 +28,6 @@ CTTEMPLATE=mycustomtemplate
 BRIDGE[default]=vmbr1000
 BRIDGE[vmbr1002]="vlan200 vlan201 vlan203"
 BRIDGE[vmbr1003]="vlan300 vlan301 vlan303"
+
+# Command macro's to use with services (mind quoting)
+CMDMACRO[ssh]='echo SSH $(hostname) $SOCAT_PEERADDR'

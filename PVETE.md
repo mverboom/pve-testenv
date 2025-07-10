@@ -94,6 +94,25 @@ mapping the vlans to a different bridge
 BRIDGE[vmbr1001]="vlan200 vlan201 vlan202"
 ```
 
+CMDMACRO
+
+The CMDMACRO array can be used be used to define commands that should be run on the associated socket. The
+macro can be referenced in the drawing. This can simplify the drawing and make it more compact.
+
+An example of a macro can be:
+
+```
+CMDMACRO[ssh]='echo SSH $(hostname) $SOCAT_PEERADDR'
+```
+
+With this defined, in the drawing a service can be written as:
+
+```
+22/tcp ssh
+```
+
+On the container(s) this will be automatically expanded.
+
 ## Parsing
 
 This is more of a test or debug feature. It allows for only parsing the drawing and generating configuration
