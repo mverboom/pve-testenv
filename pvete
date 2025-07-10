@@ -119,16 +119,14 @@ parsedrawing() {
    while read -r line; do
       id=$(echo "$line" | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
       test "${id}" = "1" && continue
-      value=$(echo "$line" | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g; s/&quot;/"/g; s/&#39;/'\''/g;' | sed 's/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
-      shape=$(echo "$line" | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
-      srcid=$(echo "$line" | sed -n 's/.*source="\([^"]\+\)".*/\1/p')
-      tgtid=$(echo "$line" | sed -n 's/.*target="\([^"]\+\)".*/\1/p')
+      value=$(echo "$line" | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g; s/&quot;/"/g; s/&#39;/'\''/g; s/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
       parent=$(echo "$line" | sed -n 's/.*parent="\([^"]\+\)".*/\1/p')
-      ignore=$(echo "$line" | sed -n 's/.*\(dashed=1\).*/\1/p')
+
       label=$(echo "$line" | sed -n 's/.*\(edgeLabel\).*/\1/p')
       if test "$label" != ""; then
          ips[$parent]="${value}"
       elif test "$value" != ""; then
+         shape=$(echo "$line" | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
          if test "$shape" = "cloud"; then # Cloud shape is a vlan
             nets[$id]="${value/@*/}"
          elif test "$shape" = "document"; then # Document is routing table
@@ -137,10 +135,13 @@ parsedrawing() {
             services[$id]="$value"
          elif test "${parent}" = "1"; then # this is a host
             hosts[$id]="${value/@*/}"
+            ignore=$(echo "$line" | sed -n 's/.*\(dashed=1\).*/\1/p')
             test -n "$ignore" && hostsignore[$id]="$value"
          fi
       else
          # This is a link between objects
+         srcid=$(echo "$line" | sed -n 's/.*source="\([^"]\+\)".*/\1/p')
+         tgtid=$(echo "$line" | sed -n 's/.*target="\([^"]\+\)".*/\1/p')
          links[$id]="@${srcid}@${tgtid}@"
       fi
    done < <( grep '<mxCell' "$drawio" )
