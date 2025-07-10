@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-declare -A BRIDGE
+declare -A BRIDGE CMDMACRO
 
 usage() {
    echo "$0 <option> <command>"
