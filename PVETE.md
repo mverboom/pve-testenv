@@ -102,7 +102,7 @@ macro can be referenced in the drawing. This can simplify the drawing and make i
 An example of a macro can be:
 
 ```
-CMDMACRO[ssh]='echo SSH $(hostname) $SOCAT_PEERADDR'
+CMDMACRO[ssh]='echo SSH $(hostname) \$SOCAT_PEERADDR'
 ```
 
 With this defined, in the drawing a service can be written as:
