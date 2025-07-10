@@ -94,6 +94,22 @@ mapping the vlans to a different bridge
 BRIDGE[vmbr1001]="vlan200 vlan201 vlan202"
 ```
 
+## Parsing
+
+This is more of a test or debug feature. It allows for only parsing the drawing and generating configuration
+information. It does not actually change or save anything. It shows some statistics and timing information,
+which can be helpful to find problems.
+
+```
+pvete parse testing.drawio
+Converting network drawing...done
+Found 6 hosts, 3 networks, 15 links, 1 routing tables and 3 service lists.
+Drawing parsing: 0.76 seconds
+Generating container configuration...done
+Configuration generation: 0.17 seconds
+Total time: 0.92 seconds
+```
+
 ## Deploying
 
 Once a drawing is available and the configuration file has been made, deploying is quite easy (if it works).
