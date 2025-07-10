@@ -124,6 +124,7 @@ parsedrawing() {
 
       label=$(echo "$line" | sed -n 's/.*\(edgeLabel\).*/\1/p')
       if test "$label" != ""; then
+         test "${value/\/*/}" = "${value}" && { echo "IP address ${value} not in CIDR format"; exit 1; }
          ips[$parent]="${value}"
       elif test "$value" != ""; then
          shape=$(echo "$line" | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
