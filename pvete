@@ -121,17 +121,20 @@ parsedrawing() {
 
    echo -n "Converting network drawing..."
    while read -r line; do
-      id=$(echo "$line" | sed -n 's/.*id="\([^"]\+\)" .*/\1/p')
+      unset id
+      [[ "$line" =~ id=\"([^\"]+)\" ]] && id="${BASH_REMATCH[1]}"
       test "${id}" = "1" && continue
-      value=$(echo "$line" | sed -n 's/.*value="\([^"]*\)" .*/\1/p' | sed 's/&lt;[/]*div&gt;/@/g; s/&quot;/"/g; s/&#39;/'\''/g; s/&[lg]t;/#/g; s/#[^#]*#//g' | sed 's/@@/@/g; s/@$//; s/^@//')
-      parent=$(echo "$line" | sed -n 's/.*parent="\([^"]\+\)".*/\1/p')
+      unset value
+      [[ "$line" =~ value=\"([^\"]+)\" ]] && value=$(echo "${BASH_REMATCH[1]}" | sed 's/&lt;[/]*div&gt;/@/g; s/&quot;/"/g; s/&#39;/'\''/g; s/&[lg]t;/#/g; s/#[^#]*#//g; s/@@/@/g; s/@$//; s/^@//')
+      unset parent
+      [[ "$line" =~ parent=\"([^\"]+)\" ]] && parent="${BASH_REMATCH[1]}"
 
-      label=$(echo "$line" | sed -n 's/.*\(edgeLabel\).*/\1/p')
-      if test "$label" != ""; then
+      if [[ "$line" =~ .*(edgeLabel).* ]]; then
          test "${value/\/*/}" = "${value}" && { echo "IP address ${value} not in CIDR format"; exit 1; }
          ips[$parent]="${value}"
       elif test "$value" != ""; then
-         shape=$(echo "$line" | sed -n 's/.*shape=\([^\;]*\).*/\1/p')
+         unset shape
+         [[ "$line" =~ shape=([^;]+) ]] && shape="${BASH_REMATCH[1]}"
          if test "$shape" = "cloud"; then # Cloud shape is a vlan
             nets[$id]="${value/@*/}"
          elif test "$shape" = "document"; then # Document is routing table
@@ -140,14 +143,14 @@ parsedrawing() {
             services[$id]="$value"
          elif test "${parent}" = "1"; then # this is a host
             hosts[$id]="${value/@*/}"
-            ignore=$(echo "$line" | sed -n 's/.*\(dashed=1\).*/\1/p')
-            test -n "$ignore" && hostsignore[$id]="$value"
+            [[ "$line" =~ (dashed=1\;) ]] && hostsignore[$id]="$value"
          fi
       else
          # This is a link between objects
-         srcid=$(echo "$line" | sed -n 's/.*source="\([^"]\+\)".*/\1/p')
-         tgtid=$(echo "$line" | sed -n 's/.*target="\([^"]\+\)".*/\1/p')
-         links[$id]="@${srcid}@${tgtid}@"
+         unset srcid tgtid
+         [[ "$line" =~ source=\"([^\"]+)\" ]] && srcid="${BASH_REMATCH[1]}"
+         [[ "$line" =~ target=\"([^\"]+)\" ]] && tgtid="${BASH_REMATCH[1]}"
+         test "$srcid" != "" -a "$tgtid" != "" && links[$id]="@${srcid}@${tgtid}@"
       fi
    done < <( grep '<mxCell' "$drawio" )
 
