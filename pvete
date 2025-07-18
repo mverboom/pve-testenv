@@ -315,16 +315,17 @@ modify() {
    done
 
    # Find hosts that need to be created
+   if test "${#ctids[*]}" -eq 0; then
+      ctid="$CTIDSTART"
+   else
+      ctid=$(( "$( printf "%d\n" ${ctids[*]} | sort -n | tail -1 )" + 1 ))
+   fi
    for hostid in "${!hostnames[@]}"; do
       if [[ ! " ${oldhostnames[@]} " =~ " ${hostnames[$hostid]} " ]]; then
-         if test "${#ctids[*]}" -eq 0; then
-            ctid="$CTIDSTART"
-         else
-            ctid=$(( "$( printf "%d\n" ${ctids[*]} | sort | tail -1 )" + 1 ))
-         fi
          ctids[$hostid]="$ctid"
          echo "Create ${hostnames[$hostid]} $ctid"
          runcmd ssh "${CTSERVER}" "pct create $ctid ${ctcmds[$hostid]}"
+         ctid=$(( ctid + 1 ))
       fi
    done
 
