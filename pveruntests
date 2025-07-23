@@ -38,6 +38,13 @@ readconfig() {
           [[ " ${tests[@]} " =~ " ${section} " ]] && { echo "config file \"${cfg}\": Redefinition of section $section."; exit 1; }
           tests+=( "$section" )
       elif [[ $val ]]; then
+          if test "$var" = "run"; then
+             echo "generating from $val"
+             testoutput=$(mktemp)
+             ${val} > "$testoutput" || { echo "Error running $val"; rm -f "$testoutput"; exit 1; }
+             readconfig "$testoutput"
+             rm -f "$testoutput"
+          fi
           if test "$var" = "include"; then
              for cfgfile in $val; do
                 echo "including $cfgfile"
