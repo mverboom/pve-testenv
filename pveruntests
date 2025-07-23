@@ -121,17 +121,24 @@ echo -n "Reading config..."
 readconfig "$CFGNAME"
 echo "done"
 
-echo "Running tests"
+testoutput="$(mktemp)"
 result=()
 runtests=( ${tests[@]} )
 test "$*" != "" && runtests=( "$@" )
 start=$(date "+%s%N")
+started=0
 for test in "${runtests[@]}"; do
    test "${t_from[$test]}" = "" && { echo "No such test $test"; continue; }
-   runjob "runtest $test"
+   runjob "runtest $test" >> "$testoutput"
+   started=$(( started + 1 ))
+   echo -en "Running tests: [${started}/${#runtests[*]}]\r"
 done
 runend
-echo "Tests completed."
+echo -e "$(tput el)Tests completed."
+echo "Test output:"
+cat "$testoutput"
+rm -f "$testoutput"
+echo
 end=$(date "+%s%N")
 time=$(printf "%0.2f" $(echo "($end - $start) / 1000000000" | bc -l))
 tps=0
