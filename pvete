@@ -287,7 +287,7 @@ modify() {
    done
 
    # Generate hosts file
-   printf "%s\n" "${hostsfile[@]}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}\"/hosts"
+   printf "%s\n" "127.0.0.1 localhost" "${hostsfile[@]}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}\"/hosts"
 
    # Generate service and routing files
    runcmd ssh "${CTSERVER}" "rm -f ${CTSHARED}/routes-* ${CTSHARED}/services-*"
