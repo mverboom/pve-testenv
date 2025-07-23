@@ -39,15 +39,15 @@ readconfig() {
           tests+=( "$section" )
       elif [[ $val ]]; then
           if test "$var" = "run"; then
-             echo "generating from $val"
+             test "$VERBOSE" -gt 0 && echo "generating from $val"
              testoutput=$(mktemp)
-             ${val} > "$testoutput" || { echo "Error running $val"; rm -f "$testoutput"; exit 1; }
+             eval ${val} > "$testoutput" || { echo "Error running $val"; rm -f "$testoutput"; exit 1; }
              readconfig "$testoutput"
              rm -f "$testoutput"
           fi
           if test "$var" = "include"; then
              for cfgfile in $val; do
-                echo "including $cfgfile"
+                test "$VERBOSE" -gt 0 && echo "including $cfgfile"
                 readconfig "$cfgfile"
              done
           else
@@ -102,10 +102,12 @@ usage() {
 }
 
 JOBS=2
+VERBOSE=0
 declare -a pveteopts
-while getopts :j:c: opt; do
+while getopts :vj:c: opt; do
    case $opt in
    c) CFGNAME="$OPTARG" ;;
+   v) VERBOSE=1 ;;
    j) JOBS="$OPTARG" ;;
    \?) echo "Unknown option: -$OPTARG"; usage ;;
    :) echo "Option -$OPTARG requires argument"; usage ;;
@@ -115,8 +117,11 @@ shift $((OPTIND-1))
 
 test "$CFGNAME" = "" && { echo "No configuration specified."; usage; }
 
+echo -n "Reading config..."
 readconfig "$CFGNAME"
+echo "done"
 
+echo "Running tests"
 result=()
 runtests=( ${tests[@]} )
 test "$*" != "" && runtests=( "$@" )
@@ -126,6 +131,7 @@ for test in "${runtests[@]}"; do
    runjob "runtest $test"
 done
 runend
+echo "Tests completed."
 end=$(date "+%s%N")
 time=$(printf "%0.2f" $(echo "($end - $start) / 1000000000" | bc -l))
 tps=0
