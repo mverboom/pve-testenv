@@ -127,4 +127,4 @@ echo "Ran ${#result[*]} tests in $time seconds ($tps tests per second)."
 fail=$(printf "%d\n" ${result[*]} | sort | uniq -c | sed 's/^[[:space:]]*//g' | grep " 1$" | cut -d ' ' -f 1)
 
 test "$fail" = "" && fail=0
-echo "$fail of ${#result[*]} tests failed ($(printf "%0.1f" $(echo "$fail / ${#result[*]} * 100" | bc -l))%)"
+test "${#result[*]}" -gt 0 && echo "$fail of ${#result[*]} tests failed ($(printf "%0.1f" $(echo "$fail / ${#result[*]} * 100" | bc -l))%)"
