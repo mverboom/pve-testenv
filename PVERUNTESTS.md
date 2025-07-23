@@ -119,6 +119,15 @@ Examples:
 
 ```result=<>```
 
+#### Generating tests
+
+It is also possible to run code that generates output that can be parsed by the script. When large test
+sets are required which can be generated, this option can be useful.
+
+```run=<command>```
+
+The command needs to be executable and has to be found in the path.
+
 ### Notes on creating tests
 
 **UDP tests**
