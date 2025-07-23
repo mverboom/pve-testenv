@@ -46,7 +46,7 @@ readconfig() {
              rm -f "$testoutput"
           fi
           if test "$var" = "include"; then
-             for cfgfile in $val; do
+             for cfgfile in $( eval echo $val); do
                 test "$VERBOSE" -gt 0 && echo "including $cfgfile"
                 readconfig "$cfgfile"
              done
