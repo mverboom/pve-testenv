@@ -107,9 +107,9 @@ servicesexpn() {
       *) echo "Unknown protocol $proto, aborting"; exit 1 ;;
       esac
       if test "${cmd// /}" = "${cmd}" && test "${CMDMACRO[$cmd]}" != ""; then
-         cmdline+=( "SYSTEM:\"${CMDMACRO[$cmd]}\"" )
+         cmdline+=( "SYSTEM:\"${CMDMACRO[$cmd]}\",nofork" )
       else
-         cmdline+=( "SYSTEM:\"$cmd\"" )
+         cmdline+=( "SYSTEM:\"$cmd\",nofork" )
       fi
       echo "${cmdline[@]}"
    done < <(echo "$*" | sed "s/@/\n/g" )
