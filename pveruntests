@@ -129,9 +129,9 @@ start=$(date "+%s%N")
 started=0
 for test in "${runtests[@]}"; do
    test "${t_from[$test]}" = "" && { echo "No such test $test"; continue; }
-   runjob "runtest $test" >> "$testoutput"
    started=$(( started + 1 ))
    echo -en "Running tests: [${started}/${#runtests[*]}]\r"
+   runjob "runtest $test" >> "$testoutput"
 done
 runend
 echo -e "$(tput el)Tests completed."
