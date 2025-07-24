@@ -1,0 +1,26 @@
+#!/bin/bash
+
+usage() {
+   echo "Usage: $0 proto://hostname:port"
+   echo
+   echo "Proto can be: tcp,tls,udp,dtls,http,https"
+   exit 1
+}
+
+test "$#" -ne 1 && usage
+
+proto="${1/:*/}"
+host="${1/*\/}"
+port="${host/*:/}"
+host="${host/:*/}"
+test -z "$proto" -o -z "$host" -o -z "$port" && usage
+
+case "$proto" in
+      "tcp") testcmd=( socat -T1 tcp-connect:$host:$port,connect-timeout=2 - );;
+      "tls") testcmd=( socat -T1 openssl-connect:$host:$port,verify=0 - );;
+      "udp") testcmd=( socat -T1 udp-connect:$host:$port - "<" "<(echo)" );;
+      "dtls") testcmd=( socat -T1 openssl-dtls-client:$host:$port,verify=0 - );;
+      "http") testcmd=( curl --connect-timeout 2 --noproxy \\\* -s http://$host:$port );;
+      "https") testcmd=( curl --connect-timeout 2 --noproxy \\\* -k -s https://$host:$port );;
+esac
+${testcmd[@]}
