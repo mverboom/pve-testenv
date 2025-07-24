@@ -7,6 +7,10 @@ test -e "$basedir/hosts" && ln -sf "${basedir}/hosts" /etc/hosts
 # No DNS resolving
 rm -f /etc/resolv.conf
 
+# Change path for root
+sed -i '/^PATH=/d' /root/.bashrc
+echo 'PATH=$PATH:/shared/scripts' >> /root/.bashrc
+
 # Set routes
 test -e "$basedir/routes-$HOSTNAME" && {
    while read route; do

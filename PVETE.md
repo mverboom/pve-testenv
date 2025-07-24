@@ -61,6 +61,12 @@ This is a directory location on the Proxmox server that the script may create. T
 to store configuration information and scripts for all containers. It is shared between the containers
 using a mountpoint.
 
+CTSCRIPTS
+
+This an optional reference to a directory that contains scripts or programs that should be synchronized
+to the ```scripts``` directory in the ```CTSHARED``` directory. This directory is aumatically added to
+the path.
+
 CTTEMPLATE
 
 This is the name of the template to use when creating a container. The create has an option to create the
