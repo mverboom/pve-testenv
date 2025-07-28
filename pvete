@@ -90,26 +90,35 @@ servicesexpn() {
       proto="${proto/*\//}"
       cmd="${line/$port\/$proto /}"
 
-      cmdline=( "socat" )
-      case "$proto" in
-      "udp")
-         cmdline+=( "udp-listen:$port,fork,reuseaddr" )
-      ;;
-      "dtls")
-         cmdline+=( "openssl-dtls-server:$port,fork,reuseaddr,cert=/shared/cert.crt,key=/shared/cert.key,verify=0" )
-      ;;
-      "tcp")
-         cmdline+=( "tcp-listen:$port,fork,reuseaddr" )
-      ;;
-      "tls")
-         cmdline+=( "openssl-listen:$port,fork,reuseaddr,cert=/shared/cert.crt,key=/shared/cert.key,verify=0" )
-      ;;
-      *) echo "Unknown protocol $proto, aborting"; exit 1 ;;
-      esac
-      if test "${cmd// /}" = "${cmd}" && test "${CMDMACRO[$cmd]}" != ""; then
-         cmdline+=( "SYSTEM:\"${CMDMACRO[$cmd]}\",nofork" )
+      if test "$proto" = "udp"; then
+         cmdline=( "/shared/scripts/udplistener" "-p" "$port" )
+         if test "${cmd// /}" = "${cmd}" && test "${CMDMACRO[$cmd]}" != ""; then
+            cmdline+=( -c "\"${CMDMACRO[$cmd]}\"" )
+         else
+            cmdline+=( -c "\"$cmd\"" )
+         fi
       else
-         cmdline+=( "SYSTEM:\"$cmd\",nofork" )
+         cmdline=( "socat" )
+         case "$proto" in
+         #"udp")
+         #   cmdline+=( "udp-listen:$port,fork,reuseaddr" )
+         #;;
+         "dtls")
+            cmdline+=( "openssl-dtls-server:$port,fork,reuseaddr,cert=/shared/cert.crt,key=/shared/cert.key,verify=0" )
+         ;;
+         "tcp")
+            cmdline+=( "tcp-listen:$port,fork,reuseaddr" )
+         ;;
+         "tls")
+            cmdline+=( "openssl-listen:$port,fork,reuseaddr,cert=/shared/cert.crt,key=/shared/cert.key,verify=0" )
+         ;;
+         *) echo "Unknown protocol $proto, aborting"; exit 1 ;;
+         esac
+         if test "${cmd// /}" = "${cmd}" && test "${CMDMACRO[$cmd]}" != ""; then
+            cmdline+=( "SYSTEM:\"${CMDMACRO[$cmd]}\",nofork" )
+         else
+            cmdline+=( "SYSTEM:\"$cmd\",nofork" )
+         fi
       fi
       echo "${cmdline[@]}"
    done < <(echo "$*" | sed "s/@/\n/g" )

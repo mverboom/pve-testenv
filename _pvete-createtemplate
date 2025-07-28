@@ -52,7 +52,7 @@ dest=$(dab basedir)
 dab init 2>&1 | log
 dab bootstrap --exim --minimal 2>&1 | log
 dab install lsb-release net-tools tcpdump mtr-tiny fping iputils-arping socat wget curl telnet netcat-openbsd bash-completion \
-	nmap masscan hping3 iperf3 2>&1 | log
+	nmap masscan hping3 iperf3 python3 2>&1 | log
 # Setup ssh connecitivy
 echo "PermitRootLogin yes" >> "$dest/etc/ssh/sshd_config"
 echo "StrictHostKeyChecking no" >> "$dest/etc/ssh/ssh_config"
