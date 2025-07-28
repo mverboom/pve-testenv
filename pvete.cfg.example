@@ -7,6 +7,8 @@ CTSHARED=/var/tmp/shared
 # Directory with scripts for shared directory
 CTSCRIPTS=$PWD/scripts/
 # Container template to use
+# CTTEMPLATE=testing
+# Container template to use
 CTTEMPLATE=mycustomtemplate
 # Parallellism to use when possible (container restarts for example)
 #CTJOBS=2
@@ -21,7 +23,7 @@ CTTEMPLATE=mycustomtemplate
 # CPU cores (defaults to 1)
 #CTCORES=4
 #
-# Extra options for container creation
+# Extra options for container configuration
 #CTOPTIONS=( --pool test )
 # Define proxy if required
 #PROXY=myproxyserver:8080

@@ -194,7 +194,8 @@ generatectconfig() {
 
    for hostid in "${!hosts[@]}"; do
       unset ctcreate
-      ctcreate=( "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname "${hosts[$hostid]}" )
+      #ctcreate=( "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname "${hosts[$hostid]}" )
+      ctcreate=( --hostname "${hosts[$hostid]}" )
       cthostnames[$CTID]="${hosts[$hostid]}"
       routing=0
       ifs=0
@@ -237,7 +238,8 @@ generatectconfig() {
          fi
       done
       # Create full command to run
-      ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
+      #ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
+      ctcreate+=( --onboot 1 --start 1 --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
       if test "${hostsignore[$hostid]}" = ""; then
          hostnames[$CTID]="${hosts[$hostid]}"
          ctcmds[$CTID]="${ctcreate[*]}"
@@ -268,14 +270,17 @@ modify() {
    # Read current configuration
    . <(ssh "${CTSERVER}" "cat ${CTSHARED}/config.cfg" | sed "s/ / old/2")
 
-   tmplstorage="$(ssh "${CTSERVER}" "pvesm status --content vztmpl | sed -n '2 s/ .*//p'")"
-   test "$tmplstorage" = "" && { echo "Unable to find template storage"; exit 1; }
+   #tmplstorage="$(ssh "${CTSERVER}" "pvesm status --content vztmpl | sed -n '2 s/ .*//p'")"
+   #test "$tmplstorage" = "" && { echo "Unable to find template storage"; exit 1; }
 
    # Read new configuration
    declare -A hosts nets ips links routes hostsignore services ctcmds gws
    declare -a globalservices hostroutes hostsfile hostservices hostnames
    parsedrawing "$1"
    generatectconfig
+
+   # Determine any pool settings
+   test -n "$CTPOOL" && pool="--pool $CTPOOL"
 
    # Synchronize scripts
    test -n "$CTSCRIPTS" -a -d "$CTSCRIPTS" && runcmd rsync -a --delete "${CTSCRIPTS}" "${CTSERVER}:${CTSHARED}/scripts/"
@@ -293,7 +298,7 @@ modify() {
       if [[ ! " ${hostnames[@]} " =~ " ${hostname} " ]]; then
          echo "Remove ${hostname}"
          # destroy container
-         runcmd ssh "${CTSERVER}" "pct stop ${oldctids[$hostid]}; pct destroy ${oldctids[$hostid]}"
+         runcmd ssh "${CTSERVER}" "lxc-stop -n ${oldctids[$hostid]}; pct destroy ${oldctids[$hostid]}"
          runcmd ssh "${CTSERVER}" "rm -f ${CTSHARED}/routes-${hostname} ${CTSHARED}/services-${hostname}"
       fi
    done
@@ -328,15 +333,18 @@ modify() {
 
    # Find hosts that need to be created
    if test "${#ctids[*]}" -eq 0; then
-      ctid="$CTIDSTART"
-   else
+      ctid=$(( CTIDSTART +1 ))
+   else 
       ctid=$(( "$( printf "%d\n" ${ctids[*]} | sort -n | tail -1 )" + 1 ))
    fi
    for hostid in "${!hostnames[@]}"; do
       if [[ ! " ${oldhostnames[@]} " =~ " ${hostnames[$hostid]} " ]]; then
          ctids[$hostid]="$ctid"
          echo "Create ${hostnames[$hostid]} $ctid"
-         runcmd ssh "${CTSERVER}" "pct create $ctid ${ctcmds[$hostid]}"
+         #runcmd ssh "${CTSERVER}" "pct create $ctid ${ctcmds[$hostid]}"
+         runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $ctid $pool"
+         runcmd ssh "$CTSERVER" "pct set $ctid ${ctcmds[$hostid]}"
+         runcmd ssh "$CTSERVER" "lxc-start -n $ctid"
          ctid=$(( ctid + 1 ))
       fi
    done
@@ -358,8 +366,11 @@ modify() {
    done
    for hostid in ${recreate[*]}; do
       echo "Recreating ${hostnames[$hostid]}"
-      runcmd ssh "${CTSERVER}" "pct stop ${ctids[$hostid]}; pct destroy ${ctids[$hostid]}"
-      runcmd ssh "${CTSERVER}" "pct create ${ctids[$hostid]} ${ctcmds[$hostid]}"
+      runcmd ssh "${CTSERVER}" "lxc-stop -n ${ctids[$hostid]}; pct destroy ${ctids[$hostid]}"
+      #runcmd ssh "${CTSERVER}" "pct create ${ctids[$hostid]} ${ctcmds[$hostid]}"
+      runcmd ssh "$CTSERVER" "pct clone $CTIDSTART ${ctids[$hostid]} $pool"
+      runcmd ssh "$CTSERVER" "pct set ${ctids[$hostid]} ${ctcmds[$hostid]}"
+      runcmd ssh "$CTSERVER" "lxc-start -n ${ctids[$hostid]}"
       for restartid in ${!restart[*]}; do
          test "${restart[$restartid]}" = "${ctids[$hostid]}" && unset restart[$restartid]
       done
@@ -441,15 +452,23 @@ deploy() {
 
    echo "done"
 
+   echo "Deploying template container.."
+   runcmd ssh "$CTSERVER" "pct create $CTIDSTART $tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz --rootfs ${CTROOTFS:-pve}:${CTROOTSIZE:-1} --hostname pvete-template --unprivileged 1"
+   runcmd ssh "$CTSERVER" "pct template $CTIDSTART"
+   #ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
+
    echo "Deploying containers.."
 
    declare -a ctids
-   CTID="$CTIDSTART"
+   CTID=$(( CTIDSTART + 1 ))
+   test -n "$CTPOOL" && pool="--pool $CTPOOL"
    for ct in ${!ctcmds[@]}; do
       test "${hostroutes[$ct]}" != "" && echo -e "${hostroutes[$ct]/%\\n/}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/routes-${hostnames[$ct]}\""
       test "${hostservices[$ct]}" != "" && echo -e "${hostservices[$ct]/%\\n/}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/services-${hostnames[$ct]}\""
       echo "Creating container $CTID: ${hostnames[$ct]}:"
-      runcmd ssh "$CTSERVER" "pct create $CTID ${ctcmds[$ct]}"
+      runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $CTID $pool"
+      runcmd ssh "$CTSERVER" "pct set $CTID ${ctcmds[$ct]}"
+      runcmd ssh "$CTSERVER" "lxc-start -n $CTID"
       runcmd ssh "$CTSERVER" "echo \"$CTID ${hostnames[$ct]}\" >> \"${CTSHARED}/deployed\""
       ctids[$ct]="$CTID"
       CTID=$(( CTID + 1 ))
@@ -552,8 +571,9 @@ case "$1" in
    echo -n "Destroying container"
    for ctid in "${!cts[@]}"; do
       echo -n " ${cts[$ctid]}"
-      ssh "${CTSERVER}" "pct stop $ctid 2> /dev/null; pct destroy $ctid"
+      ssh "${CTSERVER}" "lxc-stop -n $ctid 2> /dev/null; pct destroy $ctid"
    done
+   ssh "${CTSERVER}" "pct destroy $CTIDSTART"
    echo
    if test "$PROXY" != ""; then
       echo -n "Stopping proxy service.."
