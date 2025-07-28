@@ -100,9 +100,6 @@ servicesexpn() {
       else
          cmdline=( "socat" )
          case "$proto" in
-         #"udp")
-         #   cmdline+=( "udp-listen:$port,fork,reuseaddr" )
-         #;;
          "dtls")
             cmdline+=( "openssl-dtls-server:$port,fork,reuseaddr,cert=/shared/cert.crt,key=/shared/cert.key,verify=0" )
          ;;
@@ -194,7 +191,6 @@ generatectconfig() {
 
    for hostid in "${!hosts[@]}"; do
       unset ctcreate
-      #ctcreate=( "$tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz" --hostname "${hosts[$hostid]}" )
       ctcreate=( --hostname "${hosts[$hostid]}" )
       cthostnames[$CTID]="${hosts[$hostid]}"
       routing=0
@@ -238,7 +234,6 @@ generatectconfig() {
          fi
       done
       # Create full command to run
-      #ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
       ctcreate+=( --onboot 1 --start 1 --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
       if test "${hostsignore[$hostid]}" = ""; then
          hostnames[$CTID]="${hosts[$hostid]}"
@@ -270,9 +265,6 @@ modify() {
    # Read current configuration
    . <(ssh "${CTSERVER}" "cat ${CTSHARED}/config.cfg" | sed "s/ / old/2")
 
-   #tmplstorage="$(ssh "${CTSERVER}" "pvesm status --content vztmpl | sed -n '2 s/ .*//p'")"
-   #test "$tmplstorage" = "" && { echo "Unable to find template storage"; exit 1; }
-
    # Read new configuration
    declare -A hosts nets ips links routes hostsignore services ctcmds gws
    declare -a globalservices hostroutes hostsfile hostservices hostnames
@@ -298,8 +290,7 @@ modify() {
       if [[ ! " ${hostnames[@]} " =~ " ${hostname} " ]]; then
          echo "Remove ${hostname}"
          # destroy container
-         runcmd ssh "${CTSERVER}" "lxc-stop -n ${oldctids[$hostid]}; pct destroy ${oldctids[$hostid]}"
-         runcmd ssh "${CTSERVER}" "rm -f ${CTSHARED}/routes-${hostname} ${CTSHARED}/services-${hostname}"
+         runcmd ssh "${CTSERVER}" "lxc-stop -n ${oldctids[$hostid]}; pct destroy ${oldctids[$hostid]}; rm -f ${CTSHARED}/routes-${hostname} ${CTSHARED}/services-${hostname}"
       fi
    done
 
@@ -341,10 +332,7 @@ modify() {
       if [[ ! " ${oldhostnames[@]} " =~ " ${hostnames[$hostid]} " ]]; then
          ctids[$hostid]="$ctid"
          echo "Create ${hostnames[$hostid]} $ctid"
-         #runcmd ssh "${CTSERVER}" "pct create $ctid ${ctcmds[$hostid]}"
-         runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $ctid $pool"
-         runcmd ssh "$CTSERVER" "pct set $ctid ${ctcmds[$hostid]}"
-         runcmd ssh "$CTSERVER" "lxc-start -n $ctid"
+         runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $ctid $pool; pct set $ctid ${ctcmds[$hostid]}; lxc-start -n $ctid"
          ctid=$(( ctid + 1 ))
       fi
    done
@@ -366,11 +354,7 @@ modify() {
    done
    for hostid in ${recreate[*]}; do
       echo "Recreating ${hostnames[$hostid]}"
-      runcmd ssh "${CTSERVER}" "lxc-stop -n ${ctids[$hostid]}; pct destroy ${ctids[$hostid]}"
-      #runcmd ssh "${CTSERVER}" "pct create ${ctids[$hostid]} ${ctcmds[$hostid]}"
-      runcmd ssh "$CTSERVER" "pct clone $CTIDSTART ${ctids[$hostid]} $pool"
-      runcmd ssh "$CTSERVER" "pct set ${ctids[$hostid]} ${ctcmds[$hostid]}"
-      runcmd ssh "$CTSERVER" "lxc-start -n ${ctids[$hostid]}"
+      runcmd ssh "${CTSERVER}" "lxc-stop -n ${ctids[$hostid]}; pct destroy ${ctids[$hostid]}; pct clone $CTIDSTART ${ctids[$hostid]} $pool; pct set ${ctids[$hostid]} ${ctcmds[$hostid]}; lxc-start -n ${ctids[$hostid]}"
       for restartid in ${!restart[*]}; do
          test "${restart[$restartid]}" = "${ctids[$hostid]}" && unset restart[$restartid]
       done
@@ -452,24 +436,18 @@ deploy() {
 
    echo "done"
 
+   test -n "$CTPOOL" && pool="--pool $CTPOOL"
+
    echo "Deploying template container.."
-   runcmd ssh "$CTSERVER" "pct create $CTIDSTART $tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz --rootfs ${CTROOTFS:-pve}:${CTROOTSIZE:-1} --hostname pvete-template --unprivileged 1"
-   runcmd ssh "$CTSERVER" "pct template $CTIDSTART"
-   #ctcreate+=( --onboot 1 --start 1 --rootfs "${CTROOTFS:-pve}:${CTROOTSIZE:-1}" --memory "${CTMEM:-1024}" --cores "${CTCORES:-1}" --unprivileged 1 --mp0 "$CTSHARED,mp=/shared" ${CTOPTIONS[@]} )
+   runcmd ssh "$CTSERVER" "pct create $CTIDSTART $tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz --rootfs ${CTROOTFS:-pve}:${CTROOTSIZE:-1} --hostname pvete-template --unprivileged 1 $pool; pct template $CTIDSTART"
 
    echo "Deploying containers.."
-
    declare -a ctids
    CTID=$(( CTIDSTART + 1 ))
-   test -n "$CTPOOL" && pool="--pool $CTPOOL"
    for ct in ${!ctcmds[@]}; do
       test "${hostroutes[$ct]}" != "" && echo -e "${hostroutes[$ct]/%\\n/}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/routes-${hostnames[$ct]}\""
       test "${hostservices[$ct]}" != "" && echo -e "${hostservices[$ct]/%\\n/}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/services-${hostnames[$ct]}\""
       echo "Creating container $CTID: ${hostnames[$ct]}:"
-      #runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $CTID $pool"
-      #runcmd ssh "$CTSERVER" "pct set $CTID ${ctcmds[$ct]}"
-      #runcmd ssh "$CTSERVER" "lxc-start -n $CTID"
-      #runcmd ssh "$CTSERVER" "echo \"$CTID ${hostnames[$ct]}\" >> \"${CTSHARED}/deployed\""
       runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $CTID $pool; pct set $CTID ${ctcmds[$ct]}; lxc-start -n $CTID; echo \"$CTID ${hostnames[$ct]}\" >> \"${CTSHARED}/deployed\""
       ctids[$ct]="$CTID"
       CTID=$(( CTID + 1 ))
