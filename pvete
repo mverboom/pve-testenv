@@ -419,7 +419,7 @@ deploy() {
 
    if test -n "$CTSCRIPTS" -a -d "$CTSCRIPTS"; then
       echo "Synchronizing scripts.."
-      runcmd rsync -a --delete ./scripts/ "${CTSERVER}:${CTSHARED}/scripts/"
+      runcmd rsync -a --delete "${CTSCRIPTS}" "${CTSERVER}:${CTSHARED}/scripts/"
    fi
 
    if test "$PROXY" != ""; then
@@ -466,10 +466,11 @@ deploy() {
       test "${hostroutes[$ct]}" != "" && echo -e "${hostroutes[$ct]/%\\n/}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/routes-${hostnames[$ct]}\""
       test "${hostservices[$ct]}" != "" && echo -e "${hostservices[$ct]/%\\n/}" | runcmd ssh "$CTSERVER" "cat > \"${CTSHARED}/services-${hostnames[$ct]}\""
       echo "Creating container $CTID: ${hostnames[$ct]}:"
-      runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $CTID $pool"
-      runcmd ssh "$CTSERVER" "pct set $CTID ${ctcmds[$ct]}"
-      runcmd ssh "$CTSERVER" "lxc-start -n $CTID"
-      runcmd ssh "$CTSERVER" "echo \"$CTID ${hostnames[$ct]}\" >> \"${CTSHARED}/deployed\""
+      #runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $CTID $pool"
+      #runcmd ssh "$CTSERVER" "pct set $CTID ${ctcmds[$ct]}"
+      #runcmd ssh "$CTSERVER" "lxc-start -n $CTID"
+      #runcmd ssh "$CTSERVER" "echo \"$CTID ${hostnames[$ct]}\" >> \"${CTSHARED}/deployed\""
+      runcmd ssh "$CTSERVER" "pct clone $CTIDSTART $CTID $pool; pct set $CTID ${ctcmds[$ct]}; lxc-start -n $CTID; echo \"$CTID ${hostnames[$ct]}\" >> \"${CTSHARED}/deployed\""
       ctids[$ct]="$CTID"
       CTID=$(( CTID + 1 ))
       echo "done"
