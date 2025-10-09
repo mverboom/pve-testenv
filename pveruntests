@@ -60,25 +60,35 @@ readconfig() {
 runtest() {
    test="$1"
 
-   if test "${t_service[$test]/\//}" = "${t_service[$test]}"; then
-      case "${t_service[$test]}" in
-      "ping") testcmd=( fping -q -c 2 -r 0 ${t_to[$test]}) ;;
-      *) echo "[${test}]: Unknown service ${t_service[$test]}"; return 1 ;;
-      esac
+   # Test remote command
+   if test -n "${t_on[$test]}"; then
+      testfrom="${t_on[$test]}"
+      testcmd=( "timeout" "5" "${t_cmd[@]}" )
    else
-      port="${t_service[$test]/\/*/}"
-      proto="${t_service[$test]/*\//}"
-      case "$proto" in
-      "tcp") testcmd=( socat -T1 tcp-connect:${t_to[$test]}:$port,connect-timeout=2 - );;
-      "tls") testcmd=( socat -T1 openssl-connect:${t_to[$test]}:$port,verify=0 - );;
-      "udp") testcmd=( socat -T1 udp-connect:${t_to[$test]}:$port - "<" "<(echo)" );;
-      "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0 - );;
-      "http") testcmd=( curl --connect-timeout 2 --noproxy \\\* -s http://${t_to[$test]}:$port );;
-      "https") testcmd=( curl --connect-timeout 2 --noproxy \\\* -k -s https://${t_to[$test]}:$port );;
-      *) echo "[${test}]: Unknown protocol ${proto}"; return 1 ;;
-      esac
+      # Test connectivity
+      if test "${t_service[$test]/\//}" = "${t_service[$test]}"; then
+         testfrom="${t_from[$test]}"
+         case "${t_service[$test]}" in
+         "ping") testcmd=( fping -q -c 2 -r 0 ${t_to[$test]}) ;;
+         *) echo "[${test}]: Unknown service ${t_service[$test]}"; return 1 ;;
+         esac
+      else
+         testfrom="${t_from[$test]}"
+         port="${t_service[$test]/\/*/}"
+         proto="${t_service[$test]/*\//}"
+         case "$proto" in
+         "tcp") testcmd=( socat -T1 tcp-connect:${t_to[$test]}:$port,connect-timeout=2 - );;
+         "tls") testcmd=( socat -T1 openssl-connect:${t_to[$test]}:$port,verify=0 - );;
+         "udp") testcmd=( socat -T1 udp-connect:${t_to[$test]}:$port - "<" "<(echo)" );;
+         "dtls") testcmd=( socat -T1 openssl-dtls-client:${t_to[$test]}:$port,verify=0 - );;
+         "http") testcmd=( curl --connect-timeout 2 --noproxy \\\* -s http://${t_to[$test]}:$port );;
+         "https") testcmd=( curl --connect-timeout 2 --noproxy \\\* -k -s https://${t_to[$test]}:$port );;
+         *) echo "[${test}]: Unknown protocol ${proto}"; return 1 ;;
+         esac
+      fi
    fi
-   testoutput="$(pvete "${pveteopts[@]}" exec ${t_from[$test]} "${testcmd[@]}" 2>&1 )"
+   testoutput="$(pvete "${pveteopts[@]}" exec $testfrom "${testcmd[@]}" 2>&1 )"
+
    testresult="$?"
    test "$testresult" -eq 0 -a "${t_result[$test]}" = "fail" && { echo "[${test}]: test succeeded, should fail (output: \"$testoutput\")"; return 1; }
    test "$testresult" -ne 0 -a "${t_result[$test]}" = "ok" && { echo "[${test}]: test failed, should succeed (output: \"$testoutput\")"; return 1; }
@@ -126,7 +136,7 @@ test "$*" != "" && runtests=( "$@" )
 start=$(date "+%s%N")
 started=0
 for test in "${runtests[@]}"; do
-   test "${t_from[$test]}" = "" && { echo "No such test $test"; continue; }
+   test -z "${t_from[$test]}" -a -z "${t_on[$test]}" && { echo "No such test $test"; continue; }
    started=$(( started + 1 ))
    echo -en "Running tests: [${started}/${#runtests[*]}]\r"
    runjob "runtest $test" >> "$testoutput"
