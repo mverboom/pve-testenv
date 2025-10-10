@@ -29,6 +29,68 @@ include=/old-tests/*.ini
 A test is a section in the ```.ini``` file. The name should not include spaces and should be unique (also when including
 other files).
 
+There are two types of tests that can be run:
+* Execute arbitrary command on a host
+* Run a connectivity test
+
+##### Arbitrary command
+
+In order to run an arbitrary command the following options are available:
+
+**on (required)**
+
+This option refers to the host on which the test is run. This is the lxc container name as specified in
+the deployed network drawing (without any network indication).
+For example:
+
+```on=node1```
+
+**cmd (required)**
+
+The command to run on the host. This can be any command that is available on the host. The command will automatically be
+terminated after 5 seconds.
+
+An example:
+
+```cmd=ping -c 1 192.168.2.2```
+
+```cmd=hostname --fqdn```
+
+**result (required)**
+
+This refers to the exit code of the command. If the result matches the result of the command the test
+will be successful.
+
+A value of ```ok``` means the command should have an exit code of 0.
+
+A value of ```fail``` means the command should have an exit code of not 0.
+
+An example:
+
+```result=fail```
+
+**expect (optional)**
+
+This specifies a value the command should return. This is in addition to the
+```result``` parameter and ```expect``` will only be evaluated when the ```result``` is as expected.
+
+If an expected result is spread over multiple lines, a newline character can be included in the result. Make
+sure to double escape it (```\\n```).
+
+If no output is expected, the expected result should be ```<>```.
+
+The value of ```expect``` is evaluated using the ```[[ =~ ]]``` expression in bash, so
+the value of ```expect``` is treated as a regular expression.
+
+Examples:
+
+```result=12```
+
+```result=node1.testenv.example.com```
+
+
+##### Connectivity test
+
 There are multiple options available within each test:
 
 **from (required)**
