@@ -29,7 +29,7 @@ done < <( ip -br a l | grep -v "^lo" | awk '{printf "%s %s\n",$1,$3}')
 # Start services
 while read -r line; do
    eval "$line &"
-done < <( test -e "$basedir/services" && cat "$basedir/services" ; test -e "$basedir/services-$HOSTNAME" && cat "$basedir/services-$HOSTNAME" )
+done < <(  test -e "$basedir/services-$HOSTNAME" && cat "$basedir/services-$HOSTNAME"; test -e "$basedir/services" && cat "$basedir/services" )
 
 # Configure proxy
 echo 'Acquire::http::Proxy "http://127.0.0.1:40000/";' > /etc/apt/apt.conf.d/01proxy
