@@ -61,7 +61,6 @@ runtest() {
    test="$1"
 
    # Test remote command
-   #if test -n "${t_on[$test]}"; then
    if [[ " ${!t_on[@]} " =~ " ${test} " ]]; then
       testfrom="${t_on[$test]}"
       testcmd=( "timeout" "5" "${t_cmd[@]}" )
@@ -138,7 +137,6 @@ start=$(date "+%s%N")
 started=0
 for test in "${runtests[@]}"; do
    [[ ! " ${!t_from[@]} " =~ " ${test} " && ! " ${!t_on[@]} " =~ " ${test} " ]] && { echo "No such test $test"; continue; }
-   #test -z "${t_from[$test]}" -a -z "${t_on[$test]}" && { echo "No such test $test"; continue; }
    started=$(( started + 1 ))
    echo -en "Running tests: [${started}/${#runtests[*]}]\r"
    runjob "runtest $test" >> "$testoutput"
