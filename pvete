@@ -442,7 +442,7 @@ deploy() {
    test -n "$CTPOOL" && pool="--pool $CTPOOL"
 
    echo "Deploying template container.."
-   runcmd ssh "$CTSERVER" "pct create $CTIDSTART $tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz --rootfs ${CTROOTFS:-pve}:${CTROOTSIZE:-1} --hostname pvete-template --unprivileged 1 $pool; pct template $CTIDSTART"
+   runcmd ssh "$CTSERVER" "pct create $CTIDSTART $tmplstorage:vztmpl/${CTTEMPLATE}.tar.gz --rootfs ${CTROOTFS:-pve}:${CTROOTSIZE:-1} --hostname pvete-template --features nesting=1 --unprivileged 1 $pool; pct template $CTIDSTART"
 
    echo "Deploying containers.."
    declare -a ctids
