@@ -22,9 +22,10 @@ cleanup() {
 type dab > /dev/null 2>&1 || { echo "dab not found" | log; exit 1; }
 type pvesm > /dev/null 2>&1 || { echo "proxmox tools not found" | log; exit 1; }
 
-test "$1" = "" && { echo "no image name provided" | log; exit 1; }
-
 imagename="$1"
+shift
+
+test "$imagename" = "" && { echo "no image name provided" | log; exit 1; }
 
 echo "Creating template $imagename $DIST $SUITE $VER" | log
 
@@ -81,8 +82,8 @@ dab exec systemctl mask container-getty@1.service
 dab exec systemctl mask container-getty@2.service
 # Enable iperf3 service
 dab exec systemctl enable iperf3.service
-# Remove cron and sshd
-dab exec apt purge -y cron-daemon-common openssh-server
+# Remove any packages passed on the commandline
+test "$#" -gt 0 && dab exec apt purge -y "$@"
 
 archive=$(dab finalize 2>&1 | grep "appliance archive:" | cut -d' ' -f3)
 mv "$archive" "$storagepath"/"$imagename.tar.gz"

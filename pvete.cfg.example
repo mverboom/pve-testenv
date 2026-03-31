@@ -8,6 +8,8 @@ CTSHARED=/var/tmp/shared
 CTSCRIPTS=$PWD/scripts/
 # Container template to use
 # CTTEMPLATE=testing
+# Packages to exclude from template
+#CTTEMPLATEEXCLUDE="cron-daemon-common openssh-server"
 # Container template to use
 CTTEMPLATE=mycustomtemplate
 # Parallellism to use when possible (container restarts for example)

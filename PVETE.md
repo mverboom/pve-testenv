@@ -73,6 +73,10 @@ This is the name of the template to use when creating a container. The create ha
 template using DAB. This takes care of the requirements that are needed in the containers to make the
 environment run smoothly.
 
+CTTEMPLATEEXCLUDE
+
+This is a space separated list of packages that should be excluded in the created template. Default this is empty.
+
 CTJOBS
 
 This is the parallellism that should be used when running tasks that can be run parallel (like restarting
